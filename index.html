@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Helify MVP - Clinical Precision v1</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <style>
+        /* Modern Dark UI */
+        body { margin: 0; background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        .app-container { display: flex; flex-direction: column; align-items: center; padding: 20px; width: 100%; max-width: 1280px; }
+        
+        /* Video & Canvas */
+        .video-box { position: relative; border: 4px solid #334155; border-radius: 20px; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16/9; max-height: 70vh; }
+        canvas { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* UI Layer */
+        #ui-layer { position: absolute; top: 20px; left: 20px; pointer-events: none; width: calc(100% - 40px); }
+        .metrics-grid { display: flex; gap: 15px; flex-wrap: wrap; }
+        .metric-card { background: rgba(15, 23, 42, 0.9); padding: 12px 18px; border-radius: 12px; border: 1px solid #1e293b; min-width: 100px; backdrop-filter: blur(4px); }
+        .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .value { font-size: 24px; font-weight: bold; color: #22d3ee; }
+        .sub-value { font-size: 12px; color: #cbd5e1; }
+        
+        /* Feedback Toast */
+        #feedback-toast { 
+            position: absolute; top: 20px; right: 20px; 
+            background: rgba(34, 211, 238, 0.95); color: #0f172a;
+            padding: 15px 25px; border-radius: 12px; font-weight: 800; font-size: 18px;
+            transform: translateX(150%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        #feedback-toast.show { transform: translateX(0); }
+        #feedback-toast.danger { background: #f3fb0c; color: white; }
+        #feedback-toast.warning { background: #f59e0b; color: #0f172a; }
+
+        /* Action Bar */
+        #action-bar { margin-top: 20px; display: flex; gap: 15px; width: 100%; justify-content: center; }
+        .btn { padding: 12px 30px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px; }
+        .btn-finish { background: #22c55e; color: white; box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3); }
+        .btn-finish:hover { background: #16a34a; transform: translateY(-2px); }
+        
+        /* History */
+        .history-section { width: 100%; margin-top: 30px; background: #1e293b; border-radius: 16px; padding: 25px; border: 1px solid #334155; }
+        h3 { margin-top: 0; color: #e2e8f0; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { text-align: left; color: #94a3b8; padding: 12px; border-bottom: 1px solid #334155; font-weight: 600; }
+        td { padding: 12px; border-bottom: 1px solid #334155; color: #f1f5f9; }
+
+        #warning-box { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(222, 250, 43, 0.9); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="video-box">
+        <video id="input_video" style="display:none;"></video>
+        <canvas id="output_canvas" width="1280" height="720"></canvas>
+        
+        <div id="ui-layer">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="label">Valid Reps</div>
+                    <div id="rep_count" class="value">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Angle</div>
+                    <div id="angle_display" class="value">180°</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Pace</div>
+                    <div id="pace_display" class="value">--</div>
+                    <div class="sub-value">Target: 2-4s</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="feedback-toast">Ready</div>
+        <div id="warning-box">⚠️ Please show your full Left Leg</div>
+    </div>
+
+    <div id="action-bar">
+        <button class="btn btn-finish" onclick="saveSession()">Finish & Save Session</button>
+    </div>
+
+    <div class="history-section">
+        <h3>📊 Session History</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Reps (Valid)</th>
+                    <th>Avg ROM</th>
+                    <th>Avg Speed</th>
+                </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    
+    // UI Elements
+    const elAngle = document.getElementById('angle_display');
+    const elReps = document.getElementById('rep_count');
+    const elPace = document.getElementById('pace_display');
+    const elToast = document.getElementById('feedback-toast');
+
+    // --- MVP CONFIGURATION (HIGH CONFIDENCE ONLY) ---
+    const CONFIG = {
+        ROM: { 
+            STAND_THRESHOLD: 165, // Rep starts/ends here
+            DEEP_THRESHOLD: 110,  // Minimum depth
+            MAX_SAFE: 175         // Hyperextension warning
+        },
+        SPEED: { 
+            MIN_TIME: 2.0, // Too fast (Momentum)
+            MAX_TIME: 6.0  // Too slow (Stalling)
+        }
+    };
+
+    // --- STATE MANAGEMENT ---
+    let state = {
+        phase: 'STANDING', 
+        repStartTime: 0,
+        repCount: 0,
+        
+        // Per Rep Data
+        currentRepMinAngle: 180,
+        
+        // Session Aggregates
+        validReps: 0,
+        totalRepsAttempted: 0,
+        sumRoM: 0,
+        sumDuration: 0
+    };
+
+    function showFeedback(text, type = 'neutral') {
+        elToast.innerText = text;
+        elToast.className = type + ' show';
+        setTimeout(() => { if(elToast.innerText === text) elToast.classList.remove('show'); }, 2000);
+    }
+
+    // --- CORE PHYSICS ---
+    function processFrame(landmarks) {
+        const now = performance.now() / 1000;
+        
+        const leftHip = landmarks[23];
+        const leftKnee = landmarks[25];
+        const leftAnkle = landmarks[27];
+        
+        const angle = calculateAngle(leftHip, leftKnee, leftAnkle);
+        elAngle.innerText = Math.round(angle) + "°";
+
+        // SAFETY: Hyperextension Visual Check
+        let isSafe = true;
+        if (angle > CONFIG.ROM.MAX_SAFE) {
+            showFeedback("Do not overextend", "danger");
+            elAngle.style.color = "#f3fb0c";
+            isSafe = false;
+        } else {
+            elAngle.style.color = "#22d3ee";
+        }
+
+        // --- STATE MACHINE ---
+        // 1. Start Rep
+        if (state.phase === 'STANDING' && angle < CONFIG.ROM.STAND_THRESHOLD) {
+            state.phase = 'DESCENDING';
+            state.repStartTime = now;
+            state.currentRepMinAngle = 180;
+        }
+
+        // 2. Track Rep
+        if (state.phase === 'DESCENDING' || state.phase === 'ASCENDING') {
+            if (angle < state.currentRepMinAngle) state.currentRepMinAngle = angle;
+            
+            // Turn around point
+            if (state.phase === 'DESCENDING' && angle < CONFIG.ROM.DEEP_THRESHOLD) {
+                state.phase = 'ASCENDING';
+            }
+        }
+
+        // 3. End Rep
+        if (state.phase === 'ASCENDING' && angle > CONFIG.ROM.STAND_THRESHOLD) {
+            finishRep(now);
+        }
+
+        return isSafe; // Return safety for color coding
+    }
+
+    function finishRep(now) {
+        state.phase = 'STANDING';
+        
+        const duration = now - state.repStartTime;
+        const depth = state.currentRepMinAngle;
+        
+        state.totalRepsAttempted++;
+        
+        let isValid = true;
+        let feedbackMsg = "Good Rep!";
+        let feedbackType = "neutral";
+
+        // RULE 1: Depth Check
+        if (depth > CONFIG.ROM.DEEP_THRESHOLD) {
+            isValid = false;
+            feedbackMsg = "Increase range"; 
+            feedbackType = "warning";
+        }
+        // RULE 2: Speed Check
+        else if (duration < CONFIG.SPEED.MIN_TIME) {
+            isValid = false;
+            feedbackMsg = "Slow down"; 
+            feedbackType = "danger";
+        }
+        // Rule 2b: Too Slow (Advice only, usually counts as valid)
+        else if (duration > CONFIG.SPEED.MAX_TIME) {
+            feedbackMsg = "Maintain steady pace";
+            feedbackType = "warning";
+        }
+
+        elPace.innerText = duration.toFixed(1) + "s";
+
+        if (isValid) {
+            state.validReps++;
+            elReps.innerText = state.validReps;
+            
+            state.sumRoM += (180 - depth);
+            state.sumDuration += duration;
+            
+            showFeedback(feedbackMsg, 'show'); 
+        } else {
+            showFeedback(feedbackMsg, feedbackType);
+        }
+    }
+
+    function calculateAngle(a, b, c) {
+        const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+        let angle = Math.abs(radians * 180.0 / Math.PI);
+        if (angle > 180.0) angle = 360 - angle;
+        return angle;
+    }
+
+    function saveSession() {
+        if (state.validReps === 0) { alert("No valid reps yet!"); return; }
+        
+        const avgRom = Math.round(state.sumRoM / state.validReps);
+        const avgSpeed = (state.sumDuration / state.validReps).toFixed(1);
+
+        const session = {
+            date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+            reps: `${state.validReps}/${state.totalRepsAttempted}`,
+            rom: avgRom + "°",
+            speed: avgSpeed + "s"
+        };
+
+        let history = JSON.parse(localStorage.getItem('helify_v1_history') || "[]");
+        history.unshift(session);
+        localStorage.setItem('helify_v1_history', JSON.stringify(history.slice(0, 10)));
+        
+        renderHistory();
+        location.reload();
+    }
+
+    function renderHistory() {
+        const history = JSON.parse(localStorage.getItem('helify_v1_history') || "[]");
+        document.getElementById('history-body').innerHTML = history.map(s => `
+            <tr>
+                <td>${s.date}</td>
+                <td><b>${s.reps}</b></td>
+                <td>${s.rom}</td>
+                <td>${s.speed}</td>
+            </tr>
+        `).join('');
+    }
+
+    // --- DRAWING & POSE ---
+    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
+    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+    
+    pose.onResults((results) => {
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, 1280, 720);
+        canvasCtx.drawImage(results.image, 0, 0, 1280, 720);
+
+        if (results.poseLandmarks) {
+            const lm = results.poseLandmarks;
+            // Only require Left Leg Visibility
+            if (lm[23].visibility > 0.7 && lm[27].visibility > 0.7) {
+                document.getElementById('warning-box').style.display = 'none';
+                
+                const isSafe = processFrame(lm);
+                
+                // --- CUSTOM DRAWING: Single Leg Only ---
+                const h = lm[23]; // Hip
+                const k = lm[25]; // Knee
+                const a = lm[27]; // Ankle
+                
+                canvasCtx.lineWidth = 8;
+                canvasCtx.lineCap = "round";
+                canvasCtx.lineJoin = "round";
+                canvasCtx.strokeStyle = isSafe ? '#22d3ee' : '#ef4444'; 
+
+                // Draw Path
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(h.x * 1280, h.y * 720);
+                canvasCtx.lineTo(k.x * 1280, k.y * 720);
+                canvasCtx.lineTo(a.x * 1280, a.y * 720);
+                canvasCtx.stroke();
+
+                // Draw Joints
+                canvasCtx.fillStyle = '#ffffff';
+                [h, k, a].forEach(p => {
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(p.x * 1280, p.y * 720, 8, 0, 2 * Math.PI);
+                    canvasCtx.fill();
+                });
+
+            } else {
+                document.getElementById('warning-box').style.display = 'block';
+            }
+        }
+        canvasCtx.restore();
+    });
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => { await pose.send({image: videoElement}); },
+        width: 1280, height: 720
+    });
+    
+    renderHistory();
+    camera.start();
+
+</script>
+</body>
+</html>
