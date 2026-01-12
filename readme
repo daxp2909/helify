@@ -1,0 +1,186 @@
+# 🦵 Helify – Clinical Precision MVP  
+**AI-powered Knee Extension Tracking (Web Demo)**
+
+Live Demo:  
+👉 https://daxp2909.github.io/helify/
+
+Helify is a camera-based physiotherapy analysis system that uses AI pose detection to provide **real-time clinical feedback** for knee extension exercises.
+
+This MVP is designed for **clinical demonstrations, stakeholder presentations, and technical validation** — not for patients.
+
+---
+
+## 🎯 What This Demo Shows
+
+This MVP demonstrates how Helify can:
+
+- Track the **left leg (hip → knee → ankle)**
+- Measure **knee angle (ROM)**
+- Detect:
+  - **Valid repetitions**
+  - **Exercise speed**
+  - **Unsafe movement**
+- Provide **live visual + numeric feedback**
+- Store **up to 10 sessions locally**
+
+All processing runs **entirely inside the browser** — no backend, no uploads, no cloud.
+
+---
+
+## 🖥️ How to Use (Demo Flow)
+
+### 1️⃣ Setup
+- Open on a **PC or laptop**
+- Allow **camera access**
+- Sit on a **flat surface or floor**
+- Make sure your **left leg is fully visible**
+  - Hip
+  - Knee
+  - Ankle
+
+If the leg is not visible, the system will show:
+
+⚠️ Please show your full Left Leg
+
+
+---
+
+### 2️⃣ Start Exercising
+Perform slow knee extensions:
+
+1. Start with your leg **straight**
+2. Bend your knee downward
+3. Return to a **fully straight** position
+
+This full movement is counted as **one repetition**.
+
+---
+
+## 📊 What You See on Screen
+
+| Metric | Meaning |
+|------|--------|
+| **Valid Reps** | Clinically accepted repetitions |
+| **Angle** | Live knee angle in degrees |
+| **Pace** | Time taken per rep |
+| **Target Pace** | 2–4 seconds per rep |
+
+---
+
+## 🧠 How a Rep is Validated
+
+Helify uses biomechanical rules.
+
+### Range of Motion (ROM)
+
+| Rule | Value |
+|------|------|
+| Start / End Position | ≥ 165° |
+| Minimum Depth | ≤ 110° |
+| Hyper-extension Warning | > 175° |
+
+If the knee does not bend enough:
+
+
+⚠️ Increase range
+
+
+If the knee extends too far:
+
+
+❗ Do not overextend
+
+
+---
+
+### Speed Rules
+
+| Condition | Time |
+|--------|------|
+| Too Fast (momentum) | < 2.0 seconds |
+| Ideal | 2.0 – 4.0 seconds |
+| Too Slow | > 6.0 seconds |
+
+Feedback examples:
+- **Slow down**
+- **Maintain steady pace**
+
+---
+
+## 🔔 Real-Time Feedback
+
+Helify provides live guidance:
+
+| Color | Meaning |
+|------|--------|
+| Cyan | Correct movement |
+| Yellow | Warning |
+| Red | Unsafe or invalid |
+
+These appear as floating notifications while exercising.
+
+---
+
+## 💾 Session History
+
+Click **“Finish & Save Session”** to store:
+
+- Date & time
+- Valid reps / total attempts
+- Average ROM
+- Average speed
+
+Up to **10 sessions** are stored locally in the browser.
+
+No login.  
+No server.  
+No data upload.
+
+---
+
+## ⚠️ Important Notes
+
+This is a **demonstration MVP**.
+
+- Not a medical device  
+- Not for unsupervised patient use  
+- Designed for:
+  - Clinical validation
+  - Product demos
+  - AI accuracy testing  
+
+Camera angle, lighting, and clothing affect accuracy.
+
+---
+
+## 🔒 Privacy
+
+- Video never leaves your device
+- All processing runs in your browser
+- Session data is stored using browser localStorage
+
+---
+
+## 🧪 Best Demo Conditions
+
+For best performance:
+
+- Bright, even lighting
+- Plain background
+- Camera at knee height
+- Left leg fully visible
+- Avoid loose clothing around the knee
+
+---
+
+## 🚀 Why This MVP Matters
+
+This prototype proves that:
+
+- Real-time AI physiotherapy tracking  
+- Clinical ROM validation  
+- Exercise quality feedback  
+
+can run **entirely in a web browser** with no backend or app installation.
+
+Helify is ready for **clinical pilots, investor demos, and product validation**.
