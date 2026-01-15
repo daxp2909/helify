@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knee Exercise Tracker - Patient Rehabilitation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        #webcam {
+            width: 100%;
+            height: auto;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        #startBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        #startBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        #startBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #stopBtn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        #stopBtn:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        #stopBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #resetBtn {
+            background: #f39c12;
+            color: white;
+        }
+
+        #resetBtn:hover {
+            background: #e67e22;
+            transform: translateY(-2px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            color: white;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        .settings {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .settings h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .setting-row label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        select, input[type="range"] {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            min-width: 150px;
+        }
+
+        input[type="range"] {
+            width: 200px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.tracking {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .person-selector {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #667eea;
+        }
+
+        .person-selector h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .person-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .person-btn {
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .person-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .person-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .exercise-log {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .exercise-log h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .log-entry {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .log-entry.extension {
+            border-left-color: #28a745;
+        }
+
+        .log-time {
+            font-size: 0.85em;
+            color: #666;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Knee Exercise Tracker</h1>
+            <p>Real-time rehabilitation monitoring for paralyzed patients</p>
+        </div>
+
+        <div class="content">
+            <div id="status" class="status loading">
+                Initializing MediaPipe... Please wait
+            </div>
+
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+
+            <div class="controls">
+                <button id="startBtn" disabled>Start Tracking</button>
+                <button id="stopBtn" disabled>Stop Tracking</button>
+                <button id="resetBtn">Reset Stats</button>
+            </div>
+
+            <div id="personSelector" class="person-selector" style="display: none;">
+                <h4>Multiple people detected! Select the PATIENT:</h4>
+                <div id="personButtons" class="person-buttons"></div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Left Knee Angle</div>
+                    <div class="stat-value" id="leftAngle">--°</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Right Knee Angle</div>
+                    <div class="stat-value" id="rightAngle">--°</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Repetitions</div>
+                    <div class="stat-value" id="reps">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Session Time</div>
+                    <div class="stat-value" id="sessionTime">00:00</div>
+                </div>
+            </div>
+
+            <div class="settings">
+                <h3>⚙️ Settings</h3>
+                <div class="setting-row">
+                    <label for="modelSelect">Model Quality:</label>
+                    <select id="modelSelect">
+                        <option value="lite">Lite (Fast, Recommended)</option>
+                        <option value="full">Full (Accurate, Slower)</option>
+                        <option value="heavy">Heavy (Best Accuracy)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <label for="extensionThreshold">Extension Threshold: <span id="thresholdValue">160</span>°</label>
+                    <input type="range" id="extensionThreshold" min="140" max="180" value="160" step="1">
+                </div>
+                <div class="setting-row">
+                    <label for="confidenceThreshold">Detection Confidence: <span id="confidenceValue">0.5</span></label>
+                    <input type="range" id="confidenceThreshold" min="0.1" max="1.0" value="0.5" step="0.1">
+                </div>
+            </div>
+
+            <div class="exercise-log">
+                <h4>📋 Exercise Log</h4>
+                <div id="logEntries">
+                    <p style="color: #666; text-align: center;">No exercises logged yet. Start tracking!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+        // Application state
+        const state = {
+            poseLandmarker: null,
+            webcamRunning: false,
+            video: null,
+            canvasElement: null,
+            canvasCtx: null,
+            drawingUtils: null,
+            lastVideoTime: -1,
+            extensionThreshold: 160,
+            confidenceThreshold: 0.5,
+            repCount: 0,
+            leftKneeExtended: false,
+            rightKneeExtended: false,
+            sessionStartTime: null,
+            sessionInterval: null,
+            selectedPersonIndex: null,
+            detectedPoses: [],
+            exerciseLog: []
+        };
+
+        // Model paths
+        const MODEL_PATHS = {
+            lite: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
+            full: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task",
+            heavy: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+        };
+
+        // DOM elements
+        const elements = {
+            video: document.getElementById("webcam"),
+            canvas: document.getElementById("canvas"),
+            startBtn: document.getElementById("startBtn"),
+            stopBtn: document.getElementById("stopBtn"),
+            resetBtn: document.getElementById("resetBtn"),
+            status: document.getElementById("status"),
+            leftAngle: document.getElementById("leftAngle"),
+            rightAngle: document.getElementById("rightAngle"),
+            reps: document.getElementById("reps"),
+            sessionTime: document.getElementById("sessionTime"),
+            modelSelect: document.getElementById("modelSelect"),
+            extensionThreshold: document.getElementById("extensionThreshold"),
+            thresholdValue: document.getElementById("thresholdValue"),
+            confidenceThreshold: document.getElementById("confidenceThreshold"),
+            confidenceValue: document.getElementById("confidenceValue"),
+            personSelector: document.getElementById("personSelector"),
+            personButtons: document.getElementById("personButtons"),
+            logEntries: document.getElementById("logEntries")
+        };
+
+        // Initialize MediaPipe
+        async function initializePoseLandmarker(modelType = 'lite') {
+            try {
+                updateStatus('loading', `Loading ${modelType} model...`);
+                
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+                );
+
+                state.poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: MODEL_PATHS[modelType],
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 3, // Detect up to 3 people (patient + assistants)
+                    minPoseDetectionConfidence: state.confidenceThreshold,
+                    minPosePresenceConfidence: state.confidenceThreshold,
+                    minTrackingConfidence: state.confidenceThreshold
+                });
+
+                state.video = elements.video;
+                state.canvasElement = elements.canvas;
+                state.canvasCtx = state.canvasElement.getContext("2d");
+                state.drawingUtils = new DrawingUtils(state.canvasCtx);
+
+                updateStatus('ready', `✓ ${modelType.toUpperCase()} model loaded! Ready to start`);
+                elements.startBtn.disabled = false;
+
+            } catch (error) {
+                console.error("Error initializing:", error);
+                updateStatus('error', `Failed to load model: ${error.message}`);
+            }
+        }
+
+        // Enable webcam
+        async function enableWebcam() {
+            if (!state.poseLandmarker) {
+                alert("Please wait for the model to load");
+                return;
+            }
+
+            try {
+                const constraints = {
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                state.video.srcObject = stream;
+                
+                state.video.addEventListener("loadeddata", () => {
+                    state.webcamRunning = true;
+                    elements.startBtn.disabled = true;
+                    elements.stopBtn.disabled = false;
+                    
+                    // Start session timer
+                    state.sessionStartTime = Date.now();
+                    state.sessionInterval = setInterval(updateSessionTime, 1000);
+                    
+                    updateStatus('tracking', '🎥 Tracking active - Monitoring patient movement');
+                    predictWebcam();
+                });
+
+            } catch (error) {
+                console.error("Webcam error:", error);
+                updateStatus('error', `Webcam access failed: ${error.message}`);
+            }
+        }
+
+        // Stop webcam
+        function stopWebcam() {
+            if (state.video && state.video.srcObject) {
+                state.video.srcObject.getTracks().forEach(track => track.stop());
+                state.video.srcObject = null;
+            }
+            
+            state.webcamRunning = false;
+            elements.startBtn.disabled = false;
+            elements.stopBtn.disabled = true;
+            
+            if (state.sessionInterval) {
+                clearInterval(state.sessionInterval);
+            }
+            
+            updateStatus('ready', 'Tracking stopped. Click Start to resume');
+            
+            // Clear canvas
+            state.canvasCtx.clearRect(0, 0, state.canvasElement.width, state.canvasElement.height);
+        }
+
+        // Main prediction loop
+        async function predictWebcam() {
+            if (!state.webcamRunning) return;
+
+            // Resize canvas to match video
+            state.canvasElement.width = state.video.videoWidth;
+            state.canvasElement.height = state.video.videoHeight;
+
+            let startTimeMs = performance.now();
+            
+            // Only process if we have a new frame
+            if (state.lastVideoTime !== state.video.currentTime) {
+                state.lastVideoTime = state.video.currentTime;
+                
+                const results = state.poseLandmarker.detectForVideo(state.video, startTimeMs);
+                processResults(results);
+            }
+
+            // Continue loop
+            if (state.webcamRunning) {
+                window.requestAnimationFrame(predictWebcam);
+            }
+        }
+
+        // Process pose detection results
+        function processResults(results) {
+            // Clear canvas
+            state.canvasCtx.save();
+            state.canvasCtx.clearRect(0, 0, state.canvasElement.width, state.canvasElement.height);
+
+            if (results.landmarks && results.landmarks.length > 0) {
+                state.detectedPoses = results.landmarks;
+
+                // Handle multiple people detection
+                if (results.landmarks.length > 1 && state.selectedPersonIndex === null) {
+                    showPersonSelector(results.landmarks.length);
+                } else if (results.landmarks.length === 1) {
+                    state.selectedPersonIndex = 0;
+                    hidePersonSelector();
+                }
+
+                // Process selected person or first person if only one detected
+                const personIndex = state.selectedPersonIndex !== null ? state.selectedPersonIndex : 0;
+                
+                if (personIndex < results.landmarks.length) {
+                    const landmarks = results.landmarks[personIndex];
+                    
+                    // Draw all detected poses (dimmed for non-selected)
+                    results.landmarks.forEach((pose, index) => {
+                        const isSelected = index === personIndex;
+                        drawPose(pose, isSelected);
+                    });
+
+                    // Calculate knee angles for selected person
+                    const leftAngle = calculateKneeAngle(landmarks, 'left');
+                    const rightAngle = calculateKneeAngle(landmarks, 'right');
+
+                    updateKneeAngles(leftAngle, rightAngle);
+                    checkExtension(leftAngle, rightAngle);
+                }
+            } else {
+                // No person detected
+                elements.leftAngle.textContent = "--°";
+                elements.rightAngle.textContent = "--°";
+                state.selectedPersonIndex = null;
+                hidePersonSelector();
+            }
+
+            state.canvasCtx.restore();
+        }
+
+        // Draw pose landmarks
+        function drawPose(landmarks, isSelected = true) {
+            const alpha = isSelected ? 1.0 : 0.3;
+            
+            // Draw connectors
+            state.canvasCtx.globalAlpha = alpha;
+            state.drawingUtils.drawConnectors(
+                landmarks,
+                PoseLandmarker.POSE_CONNECTIONS,
+                { color: isSelected ? "#00FF00" : "#CCCCCC", lineWidth: 4 }
+            );
+
+            // Draw landmarks
+            state.drawingUtils.drawLandmarks(landmarks, {
+                color: isSelected ? "#FF0000" : "#CCCCCC",
+                fillColor: isSelected ? "#00FF00" : "#EEEEEE",
+                radius: 6
+            });
+
+            // Highlight knee joints for selected person
+            if (isSelected) {
+                const leftKnee = landmarks[25]; // Left knee
+                const rightKnee = landmarks[26]; // Right knee
+
+                [leftKnee, rightKnee].forEach(knee => {
+                    if (knee) {
+                        state.canvasCtx.beginPath();
+                        state.canvasCtx.arc(
+                            knee.x * state.canvasElement.width,
+                            knee.y * state.canvasElement.height,
+                            15,
+                            0,
+                            2 * Math.PI
+                        );
+                        state.canvasCtx.strokeStyle = "#FFD700";
+                        state.canvasCtx.lineWidth = 3;
+                        state.canvasCtx.stroke();
+                    }
+                });
+
+                // Draw person indicator
+                const nose = landmarks[0];
+                if (nose) {
+                    state.canvasCtx.font = "bold 20px Arial";
+                    state.canvasCtx.fillStyle = "#00FF00";
+                    state.canvasCtx.fillText(
+                        "PATIENT",
+                        nose.x * state.canvasElement.width - 40,
+                        nose.y * state.canvasElement.height - 20
+                    );
+                }
+            }
+
+            state.canvasCtx.globalAlpha = 1.0;
+        }
+
+        // Calculate knee angle
+        function calculateKneeAngle(landmarks, side) {
+            const indices = side === 'left' 
+                ? { hip: 23, knee: 25, ankle: 27 }
+                : { hip: 24, knee: 26, ankle: 28 };
+
+            const hip = landmarks[indices.hip];
+            const knee = landmarks[indices.knee];
+            const ankle = landmarks[indices.ankle];
+
+            if (!hip || !knee || !ankle) return null;
+
+            // Check visibility
+            if (hip.visibility < state.confidenceThreshold || 
+                knee.visibility < state.confidenceThreshold || 
+                ankle.visibility < state.confidenceThreshold) {
+                return null;
+            }
+
+            // Calculate vectors
+            const v1 = {
+                x: hip.x - knee.x,
+                y: hip.y - knee.y
+            };
+
+            const v2 = {
+                x: ankle.x - knee.x,
+                y: ankle.y - knee.y
+            };
+
+            // Calculate angle using dot product
+            const dot = v1.x * v2.x + v1.y * v2.y;
+            const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+            const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+
+            const cosAngle = dot / (mag1 * mag2);
+            const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
+
+            return Math.round(angle);
+        }
+
+        // Update knee angle display
+        function updateKneeAngles(leftAngle, rightAngle) {
+            elements.leftAngle.textContent = leftAngle !== null ? `${leftAngle}°` : "--°";
+            elements.rightAngle.textContent = rightAngle !== null ? `${rightAngle}°` : "--°";
+
+            // Color coding based on extension
+            elements.leftAngle.style.color = leftAngle && leftAngle >= state.extensionThreshold ? "#00FF00" : "white";
+            elements.rightAngle.style.color = rightAngle && rightAngle >= state.extensionThreshold ? "#00FF00" : "white";
+        }
+
+        // Check for knee extension and count reps
+        function checkExtension(leftAngle, rightAngle) {
+            const leftExtended = leftAngle && leftAngle >= state.extensionThreshold;
+            const rightExtended = rightAngle && rightAngle >= state.extensionThreshold;
+
+            // Left knee rep counting
+            if (leftExtended && !state.leftKneeExtended) {
+                state.leftKneeExtended = true;
+                state.repCount++;
+                elements.reps.textContent = state.repCount;
+                logExercise('Left knee extension completed', leftAngle);
+            } else if (!leftExtended && state.leftKneeExtended) {
+                state.leftKneeExtended = false;
+            }
+
+            // Right knee rep counting
+            if (rightExtended && !state.rightKneeExtended) {
+                state.rightKneeExtended = true;
+                state.repCount++;
+                elements.reps.textContent = state.repCount;
+                logExercise('Right knee extension completed', rightAngle);
+            } else if (!rightExtended && state.rightKneeExtended) {
+                state.rightKneeExtended = false;
+            }
+        }
+
+        // Show person selector for multiple people
+        function showPersonSelector(numPeople) {
+            elements.personSelector.style.display = 'block';
+            elements.personButtons.innerHTML = '';
+
+            for (let i = 0; i < numPeople; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'person-btn';
+                btn.textContent = `Person ${i + 1}`;
+                btn.onclick = () => selectPerson(i);
+                
+                if (i === state.selectedPersonIndex) {
+                    btn.classList.add('active');
+                }
+                
+                elements.personButtons.appendChild(btn);
+            }
+        }
+
+        // Hide person selector
+        function hidePersonSelector() {
+            elements.personSelector.style.display = 'none';
+        }
+
+        // Select a specific person as patient
+        function selectPerson(index) {
+            state.selectedPersonIndex = index;
+            
+            // Update button states
+            const buttons = elements.personButtons.querySelectorAll('.person-btn');
+            buttons.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+        }
+
+        // Log exercise events
+        function logExercise(message, angle) {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = {
+                time: timestamp,
+                message: message,
+                angle: angle
+            };
+
+            state.exerciseLog.unshift(entry);
+
+            // Keep only last 20 entries
+            if (state.exerciseLog.length > 20) {
+                state.exerciseLog.pop();
+            }
+
+            updateExerciseLog();
+        }
+
+        // Update exercise log display
+        function updateExerciseLog() {
+            if (state.exerciseLog.length === 0) {
+                elements.logEntries.innerHTML = '<p style="color: #666; text-align: center;">No exercises logged yet. Start tracking!</p>';
+                return;
+            }
+
+            elements.logEntries.innerHTML = state.exerciseLog.map(entry => `
+                <div class="log-entry extension">
+                    <span class="log-time">${entry.time}</span>
+                    <strong>${entry.message}</strong> (${entry.angle}°)
+                </div>
+            `).join('');
+        }
+
+        // Update session time
+        function updateSessionTime() {
+            if (!state.sessionStartTime) return;
+
+            const elapsed = Math.floor((Date.now() - state.sessionStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+
+            elements.sessionTime.textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // Reset statistics
+        function resetStats() {
+            if (confirm('Reset all statistics? This cannot be undone.')) {
+                state.repCount = 0;
+                state.leftKneeExtended = false;
+                state.rightKneeExtended = false;
+                state.exerciseLog = [];
+                
+                elements.reps.textContent = '0';
+                elements.leftAngle.textContent = '--°';
+                elements.rightAngle.textContent = '--°';
+                elements.sessionTime.textContent = '00:00';
+                
+                if (state.sessionInterval) {
+                    clearInterval(state.sessionInterval);
+                }
+                state.sessionStartTime = null;
+                
+                updateExerciseLog();
+                
+                if (state.webcamRunning) {
+                    state.sessionStartTime = Date.now();
+                    state.sessionInterval = setInterval(updateSessionTime, 1000);
+                }
+            }
+        }
+
+        // Update status message
+        function updateStatus(type, message) {
+            elements.status.className = `status ${type}`;
+            elements.status.textContent = message;
+        }
+
+        // Event listeners
+        elements.startBtn.addEventListener("click", enableWebcam);
+        elements.stopBtn.addEventListener("click", stopWebcam);
+        elements.resetBtn.addEventListener("click", resetStats);
+
+        elements.modelSelect.addEventListener("change", async (e) => {
+            if (state.webcamRunning) {
+                alert("Please stop tracking before changing the model");
+                e.target.value = state.currentModel || 'lite';
+                return;
+            }
+            
+            state.currentModel = e.target.value;
+            await initializePoseLandmarker(e.target.value);
+        });
+
+        elements.extensionThreshold.addEventListener("input", (e) => {
+            state.extensionThreshold = parseInt(e.target.value);
+            elements.thresholdValue.textContent = state.extensionThreshold;
+        });
+
+        elements.confidenceThreshold.addEventListener("input", (e) => {
+            state.confidenceThreshold = parseFloat(e.target.value);
+            elements.confidenceValue.textContent = state.confidenceThreshold.toFixed(1);
+            
+            if (state.poseLandmarker) {
+                // Update confidence in real-time
+                state.poseLandmarker.setOptions({
+                    minPoseDetectionConfidence: state.confidenceThreshold,
+                    minPosePresenceConfidence: state.confidenceThreshold,
+                    minTrackingConfidence: state.confidenceThreshold
+                });
+            }
+        });
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            initializePoseLandmarker('lite');
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.webcamRunning) {
+                stopWebcam();
+            }
+        });
+    </script>
+</body>
+</html>
