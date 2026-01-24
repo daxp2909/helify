@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helify - Clinical Knee Extension Tracker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #0066FF;
+            --primary-dark: #0052CC;
+            --success: #00C853;
+            --warning: #FFB300;
+            --danger: #FF3D00;
+            --bg-dark: #0A0E27;
+            --bg-card: #151B3B;
+            --text-primary: #FFFFFF;
+            --text-secondary: #8B93B0;
+            --border: #2A3254;
+            --accent-cyan: #00E5FF;
+            --accent-purple: #7C4DFF;
+        }
+
+        body {
+            font-family: 'Instrument Sans', -apple-system, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background Pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 102, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(124, 77, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(21, 27, 59, 0.5) 100%);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .logo {
+            font-family: 'Space Mono', monospace;
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .mode-btn {
+            padding: 12px 30px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 5px 20px rgba(0, 102, 255, 0.3);
+        }
+
+        .mode-btn:hover:not(.active) {
+            border-color: var(--primary);
+            color: var(--text-primary);
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Video Section */
+        .video-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 20px;
+        }
+
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        #webcam {
+            width: 100%;
+            height: auto;
+            display: block;
+            transform: scaleX(-1);
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+
+        /* Coaching Overlay */
+        .coaching-overlay {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+            border-radius: 15px;
+            border: 2px solid var(--primary);
+            text-align: center;
+            max-width: 80%;
+            display: none;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        .coaching-overlay.show {
+            display: block;
+        }
+
+        .coaching-text {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .coaching-subtext {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px 25px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Instrument Sans', sans-serif;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 102, 255, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 102, 255, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        /* Side Panel */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 25px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+
+        /* Status */
+        .status {
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1em;
+            margin-bottom: 20px;
+        }
+
+        .status.loading {
+            background: rgba(255, 179, 0, 0.15);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+        }
+
+        .status.ready {
+            background: rgba(0, 200, 83, 0.15);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status.calibrating {
+            background: rgba(0, 229, 255, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+        }
+
+        .status.tracking {
+            background: rgba(0, 102, 255, 0.15);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .status.error {
+            background: rgba(255, 61, 0, 0.15);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        /* Side Selection */
+        .side-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .side-btn {
+            padding: 15px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .side-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Stats */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .stat-value.success { color: var(--success); }
+        .stat-value.warning { color: var(--warning); }
+        .stat-value.danger { color: var(--danger); }
+
+        /* Quality Score */
+        .quality-score {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(0, 102, 255, 0.1) 0%, rgba(124, 77, 255, 0.1) 100%);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            border: 4px solid;
+            position: relative;
+        }
+
+        .score-circle::before {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            padding: 4px;
+            background: conic-gradient(from 0deg, var(--primary), var(--accent-purple), var(--primary));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: rotate 3s linear infinite;
+        }
+
+        @keyframes rotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .score-label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Rep Display */
+        .rep-display {
+            text-align: center;
+            padding: 25px;
+            background: var(--bg-dark);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .rep-count {
+            font-size: 3em;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .rep-label {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Angle Display */
+        .angle-display {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .angle-box {
+            flex: 1;
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .angle-box.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 102, 255, 0.3);
+        }
+
+        .angle-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            margin-bottom: 8px;
+        }
+
+        .angle-label {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        /* ROM Display */
+        .rom-display {
+            background: var(--bg-dark);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .rom-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .rom-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent-cyan) 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .rom-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        /* Warnings */
+        .warnings {
+            background: rgba(255, 61, 0, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .warnings.show {
+            display: block;
+            animation: pulse 1s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .warning-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .warning-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Settings */
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        select, input[type="range"] {
+            padding: 8px 12px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            font-family: 'Instrument Sans', sans-serif;
+        }
+
+        input[type="range"] {
+            width: 150px;
+        }
+
+        /* Calibration Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 2px solid var(--primary);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 102, 255, 0.3);
+        }
+
+        .modal-title {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .modal-text {
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .countdown {
+            font-size: 4em;
+            font-weight: 700;
+            font-family: 'Space Mono', monospace;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 30px 0;
+        }
+
+        /* Person Selector */
+        .person-selector {
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px solid var(--warning);
+            display: none;
+        }
+
+        .person-selector.show {
+            display: block;
+        }
+
+        .person-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .person-btn {
+            padding: 15px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .person-btn.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Export Section */
+        .export-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-export {
+            padding: 12px;
+            background: var(--bg-dark);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-export:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Session Log */
+        .session-log {
+            max-height: 300px;
+            overflow-y: auto;
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .log-entry {
+            padding: 12px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .log-entry.warning {
+            border-left-color: var(--warning);
+        }
+
+        .log-entry.success {
+            border-left-color: var(--success);
+        }
+
+        .log-time {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .log-message {
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .side-panel {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .panel-card {
+                flex: 1;
+                min-width: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2em;
+            }
+
+            .mode-selector {
+                flex-direction: column;
+            }
+
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .angle-display {
+                flex-direction: column;
+            }
+
+            .side-panel {
+                flex-direction: column;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBcsIO0Edik58zyBhyEwQh441NgyWp9tWE",
+    authDomain: "helify-2192d.firebaseapp.com",
+    projectId: "helify-2192d",
+    storageBucket: "helify-2192d.firebasestorage.app",
+    messagingSenderId: "37398517660",
+    appId: "1:37398517660:web:117bbc0a6a7be8cf7c9a59"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+</script>
+    <div class="app">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">HELIFY</div>
+            <div class="tagline">Clinical Knee Extension Rehabilitation System</div>
+            
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="patient">
+                    👤 Patient Mode
+                </button>
+                <button class="mode-btn" data-mode="physio">
+                    🏥 Physiotherapist Mode
+                </button>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="status loading">
+            Initializing MediaPipe... Please wait
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Video Section -->
+            <div class="video-section">
+                <div class="video-container">
+                    <video id="webcam" autoplay playsinline></video>
+                    <canvas id="canvas"></canvas>
+                    
+                    <div id="coachingOverlay" class="coaching-overlay">
+                        <div id="coachingText" class="coaching-text"></div>
+                        <div id="coachingSubtext" class="coaching-subtext"></div>
+                    </div>
+                </div>
+
+                <!-- Person Selector -->
+                <div id="personSelector" class="person-selector">
+                    <strong>⚠️ Multiple people detected! Select the PATIENT:</strong>
+                    <div id="personButtons" class="person-buttons"></div>
+                </div>
+
+                <!-- Controls -->
+                <div class="controls">
+                    <button id="calibrateBtn" class="btn-primary" disabled>
+                        🎯 Start Calibration
+                    </button>
+                    <button id="startBtn" class="btn-primary" disabled>
+                        ▶️ Start Exercise
+                    </button>
+                    <button id="stopBtn" class="btn-danger" disabled>
+                        ⏹️ Stop
+                    </button>
+                    <button id="resetBtn" class="btn-secondary">
+                        🔄 Reset Session
+                    </button>
+                </div>
+            </div>
+
+            <!-- Side Panel -->
+            <div class="side-panel">
+                <!-- Active Leg Selection -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <span class="panel-title">🦵 Active Leg</span>
+                    </div>
+                    
+                    <div class="side-selector">
+                        <button class="side-btn active" data-side="left">Left Leg</button>
+                        <button class="side-btn" data-side="right">Right Leg</button>
+                    </div>
+
+                    <!-- Current Angles -->
+                    <div class="angle-display">
+                        <div class="angle-box" id="leftAngleBox">
+                            <div class="angle-value" id="leftAngle">--°</div>
+                            <div class="angle-label">Left</div>
+                        </div>
+                        <div class="angle-box" id="rightAngleBox">
+                            <div class="angle-value" id="rightAngle">--°</div>
+                            <div class="angle-label">Right</div>
+                        </div>
+                    </div>
+
+                    <!-- ROM Progress -->
+                    <div class="rom-display">
+                        <div class="rom-bar">
+                            <div id="romFill" class="rom-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="rom-stats">
+                            <span>Current ROM: <strong id="currentROM">0°</strong></span>
+                            <span>Target: <strong id="targetROM">--°</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quality & Stats -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <span class="panel-title">📊 Session Stats</span>
+                    </div>
+
+                    <!-- Quality Score -->
+                    <div class="quality-score">
+                        <div class="score-circle">
+                            <span id="qualityScore">--</span>
+                        </div>
+                        <div class="score-label">Rep Quality Score</div>
+                    </div>
+
+                    <!-- Rep Count -->
+                    <div class="rep-display">
+                        <div class="rep-count" id="repCount">0</div>
+                        <div class="rep-label">Valid Repetitions</div>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Attempted</div>
+                            <div class="stat-value" id="attemptedReps">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Success Rate</div>
+                            <div class="stat-value success" id="successRate">--%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Avg ROM</div>
+                            <div class="stat-value" id="avgROM">--°</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Best ROM</div>
+                            <div class="stat-value success" id="bestROM">--°</div>
+                        </div>
+                    </div>
+
+                    <!-- Warnings -->
+                    <div id="warnings" class="warnings">
+                        <div id="warningList"></div>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <span class="panel-title">⚙️ Settings</span>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">Model Quality</span>
+                        <select id="modelSelect">
+                            <option value="lite">Lite (Fast)</option>
+                            <option value="full" selected>Full (Recommended)</option>
+                            <option value="heavy">Heavy (Best)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">Detection Confidence: <strong id="confidenceValue">0.6</strong></span>
+                        <input type="range" id="confidenceThreshold" min="0.3" max="0.9" value="0.6" step="0.1">
+                    </div>
+
+                    <div class="setting-row">
+                        <span class="setting-label">Speed Tolerance</span>
+                        <select id="speedTolerance">
+                            <option value="strict">Strict</option>
+                            <option value="moderate" selected>Moderate</option>
+                            <option value="relaxed">Relaxed</option>
+                        </select>
+                    </div>
+
+                    <!-- Export Actions -->
+                    <div class="export-actions">
+                        <button class="btn-export" id="exportPDFBtn" disabled>
+                            📄 Export PDF
+                        </button>
+                        <button class="btn-export" id="exportCSVBtn" disabled>
+                            📊 Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Log (Full Width) -->
+        <div class="panel-card">
+            <div class="panel-header">
+                <span class="panel-title">📝 Session Log</span>
+                <span class="panel-title" style="font-size: 0.9em; color: var(--text-secondary);">
+                    <span id="sessionTimer">00:00</span>
+                </span>
+            </div>
+            <div id="sessionLog" class="session-log">
+                <p style="color: var(--text-secondary); text-align: center;">No activity yet. Start calibration to begin.</p>
+            </div>
+        </div>
+
+        <!-- Calibration Modal -->
+        <div id="calibrationModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-title">🎯 Calibration</div>
+                <div class="modal-text" id="calibrationText">
+                    Stand with your selected leg fully extended and hold still for 3 seconds.
+                </div>
+                <div class="countdown" id="calibrationCountdown">3</div>
+                <button class="btn-secondary" onclick="cancelCalibration()" style="min-width: 200px;">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { PoseLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+        // ============================================
+        // APPLICATION STATE
+        // ============================================
+        const state = {
+            // Core
+            poseLandmarker: null,
+            webcamRunning: false,
+            mode: 'patient', // 'patient' or 'physio'
+            
+            // Video
+            video: null,
+            canvasElement: null,
+            canvasCtx: null,
+            drawingUtils: null,
+            lastVideoTime: -1,
+            
+            // Person tracking
+            selectedPersonIndex: null,
+            detectedPoses: [],
+            
+            // Active leg
+            activeSide: 'left', // 'left' or 'right'
+            
+            // Calibration
+            isCalibrated: false,
+            calibrationInProgress: false,
+            calibrationFrames: [],
+            calibrationStartTime: null,
+            baselineExtension: null, // Stored calibration angle
+            
+            // Rep detection
+            repState: 'ready', // 'ready' -> 'flexing' -> 'extending' -> 'complete'
+            currentRepData: {
+                startAngle: null,
+                minAngle: null,
+                maxAngle: null,
+                startTime: null,
+                flexionTime: null,
+                extensionTime: null,
+                speedViolations: 0,
+                smoothnessScore: 0,
+                hipStabilityScore: 0,
+                angles: []
+            },
+            
+            // Session stats
+            sessionStartTime: null,
+            sessionInterval: null,
+            validReps: 0,
+            attemptedReps: 0,
+            repHistory: [],
+            bestROM: 0,
+            avgROM: 0,
+            
+            // Quality tracking
+            currentQualityScore: 0,
+            warnings: new Set(),
+            
+            // Settings
+            confidenceThreshold: 0.6,
+            speedTolerance: 'moderate', // 'strict', 'moderate', 'relaxed'
+            
+            // Thresholds
+            flexionThreshold: 90, // Angle must go below this
+            extensionThreshold: 160, // Angle must reach this
+            speedLimits: {
+                strict: { min: 2000, max: 5000 },
+                moderate: { min: 1500, max: 6000 },
+                relaxed: { min: 1000, max: 8000 }
+            },
+            hyperextensionThreshold: 185,
+            
+            // Coaching
+            coachingMessage: '',
+            coachingSubtext: ''
+        };
+
+        // Model paths
+        const MODEL_PATHS = {
+            lite: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
+            full: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task",
+            heavy: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+        };
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        async function initializePoseLandmarker(modelType = 'full') {
+            try {
+                updateStatus('loading', `Loading ${modelType} model...`);
+                
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+                );
+
+                state.poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: MODEL_PATHS[modelType],
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 3,
+                    minPoseDetectionConfidence: state.confidenceThreshold,
+                    minPosePresenceConfidence: state.confidenceThreshold,
+                    minTrackingConfidence: state.confidenceThreshold
+                });
+
+                state.video = document.getElementById('webcam');
+                state.canvasElement = document.getElementById('canvas');
+                state.canvasCtx = state.canvasElement.getContext("2d");
+                state.drawingUtils = new DrawingUtils(state.canvasCtx);
+
+                updateStatus('ready', `✓ ${modelType.toUpperCase()} model loaded! Start with calibration`);
+                document.getElementById('calibrateBtn').disabled = false;
+
+            } catch (error) {
+                console.error("Error initializing:", error);
+                updateStatus('error', `Failed to load model: ${error.message}`);
+            }
+        }
+
+        // ============================================
+        // WEBCAM CONTROL
+        // ============================================
+        async function enableWebcam() {
+            if (!state.poseLandmarker) {
+                alert("Please wait for the model to load");
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                state.video.srcObject = stream;
+                state.video.addEventListener("loadeddata", () => {
+                    state.webcamRunning = true;
+                    predictWebcam();
+                });
+
+            } catch (error) {
+                console.error("Webcam error:", error);
+                updateStatus('error', `Webcam access failed: ${error.message}`);
+            }
+        }
+
+        function stopWebcam() {
+            if (state.video && state.video.srcObject) {
+                state.video.srcObject.getTracks().forEach(track => track.stop());
+                state.video.srcObject = null;
+            }
+            
+            state.webcamRunning = false;
+            
+            if (state.sessionInterval) {
+                clearInterval(state.sessionInterval);
+            }
+            
+            state.canvasCtx.clearRect(0, 0, state.canvasElement.width, state.canvasElement.height);
+        }
+
+        // ============================================
+        // CALIBRATION
+        // ============================================
+        async function startCalibration() {
+            if (!state.poseLandmarker) return;
+            
+            // Start webcam if not running
+            if (!state.webcamRunning) {
+                await enableWebcam();
+                // Wait for webcam to stabilize
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            state.calibrationInProgress = true;
+            state.calibrationFrames = [];
+            state.calibrationStartTime = null;
+            
+            updateStatus('calibrating', `Calibrating ${state.activeSide} leg...`);
+            document.getElementById('calibrationModal').classList.add('show');
+            document.getElementById('calibrationCountdown').textContent = '3';
+            
+            // Disable controls during calibration
+            document.getElementById('calibrateBtn').disabled = true;
+            document.getElementById('startBtn').disabled = true;
+        }
+
+        function updateCalibration(angle) {
+            if (!state.calibrationInProgress) return;
+            
+            if (!state.calibrationStartTime) {
+                state.calibrationStartTime = Date.now();
+            }
+            
+            const elapsed = (Date.now() - state.calibrationStartTime) / 1000;
+            const remaining = Math.max(0, 3 - Math.floor(elapsed));
+            
+            document.getElementById('calibrationCountdown').textContent = remaining;
+            
+            if (angle !== null) {
+                state.calibrationFrames.push(angle);
+            }
+            
+            if (elapsed >= 3) {
+                completeCalibration();
+            }
+        }
+
+        function completeCalibration() {
+            if (state.calibrationFrames.length < 30) {
+                addLog('⚠️ Calibration failed: Not enough stable frames', 'warning');
+                cancelCalibration();
+                return;
+            }
+            
+            // Calculate median angle from frames
+            const sortedAngles = state.calibrationFrames.sort((a, b) => a - b);
+            const median = sortedAngles[Math.floor(sortedAngles.length / 2)];
+            
+            // Check if calibration is reasonable
+            if (median < 150 || median > 185) {
+                addLog('⚠️ Calibration failed: Leg not fully extended', 'warning');
+                cancelCalibration();
+                return;
+            }
+            
+            state.baselineExtension = median;
+            state.isCalibrated = true;
+            state.calibrationInProgress = false;
+            
+            document.getElementById('calibrationModal').classList.remove('show');
+            updateStatus('ready', `✓ Calibrated! Baseline: ${median}° - Ready to start exercise`);
+            
+            document.getElementById('calibrateBtn').disabled = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('targetROM').textContent = `${median}°`;
+            
+            addLog(`✅ Calibration complete: Baseline ${median}° (${state.activeSide} leg)`, 'success');
+        }
+
+        window.cancelCalibration = function() {
+            state.calibrationInProgress = false;
+            state.calibrationStartTime = null;
+            state.calibrationFrames = [];
+            
+            document.getElementById('calibrationModal').classList.remove('show');
+            updateStatus('ready', 'Calibration cancelled. Click calibrate to try again');
+            
+            document.getElementById('calibrateBtn').disabled = false;
+        }
+
+        // ============================================
+        // EXERCISE TRACKING
+        // ============================================
+        function startExercise() {
+            if (!state.isCalibrated) {
+                alert("Please complete calibration first!");
+                return;
+            }
+            
+            state.sessionStartTime = Date.now();
+            state.sessionInterval = setInterval(updateSessionTimer, 1000);
+            state.repState = 'ready';
+            
+            updateStatus('tracking', `🎯 Tracking ${state.activeSide} leg exercise...`);
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('calibrateBtn').disabled = true;
+            
+            // Enable export buttons
+            document.getElementById('exportPDFBtn').disabled = false;
+            document.getElementById('exportCSVBtn').disabled = false;
+            
+            addLog(`▶️ Exercise session started (${state.activeSide} leg)`, 'success');
+            showCoaching("Ready to begin", "Flex your knee slowly");
+        }
+
+        function stopExercise() {
+            if (state.sessionInterval) {
+                clearInterval(state.sessionInterval);
+            }
+            
+            updateStatus('ready', '⏹️ Exercise stopped. Review your stats or start a new session');
+            
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('calibrateBtn').disabled = false;
+            
+            hideCoaching();
+            addLog(`⏹️ Exercise session ended`, 'warning');
+            
+            // Generate session summary
+            generateSessionSummary();
+        }
+
+        function processRepCycle(angle) {
+            if (!state.sessionStartTime) return;
+            
+            const now = Date.now();
+            
+            switch (state.repState) {
+                case 'ready':
+                    // Waiting for flexion to start
+                    if (angle < state.flexionThreshold) {
+                        state.repState = 'flexing';
+                        state.currentRepData = {
+                            startAngle: state.baselineExtension,
+                            minAngle: angle,
+                            maxAngle: state.baselineExtension,
+                            startTime: now,
+                            flexionTime: null,
+                            extensionTime: null,
+                            speedViolations: 0,
+                            smoothnessScore: 100,
+                            hipStabilityScore: 100,
+                            angles: [angle]
+                        };
+                        showCoaching("Good!", "Keep bending slowly");
+                    }
+                    break;
+                    
+                case 'flexing':
+                    // Tracking flexion phase
+                    state.currentRepData.angles.push(angle);
+                    state.currentRepData.minAngle = Math.min(state.currentRepData.minAngle, angle);
+                    
+                    // Check if starting to extend
+                    if (angle > state.currentRepData.minAngle + 10) {
+                        state.repState = 'extending';
+                        state.currentRepData.flexionTime = now - state.currentRepData.startTime;
+                        showCoaching("Now extend", "Push through slowly");
+                    } else {
+                        showCoaching("Keep going", `${Math.round(angle)}°`);
+                    }
+                    break;
+                    
+                case 'extending':
+                    // Tracking extension phase
+                    state.currentRepData.angles.push(angle);
+                    state.currentRepData.maxAngle = Math.max(state.currentRepData.maxAngle, angle);
+                    
+                    // Check if reached extension threshold
+                    if (angle >= state.extensionThreshold) {
+                        state.repState = 'complete';
+                        state.currentRepData.extensionTime = now - state.currentRepData.startTime - state.currentRepData.flexionTime;
+                        completeRep();
+                    } else {
+                        const remaining = state.extensionThreshold - angle;
+                        showCoaching("Almost there!", `${Math.round(remaining)}° to go`);
+                    }
+                    break;
+            }
+        }
+
+        function completeRep() {
+            state.attemptedReps++;
+            
+            // Calculate rep quality
+            const quality = calculateRepQuality(state.currentRepData);
+            
+            if (quality.isValid) {
+                state.validReps++;
+                const rom = state.currentRepData.maxAngle - state.currentRepData.minAngle;
+                
+                // Update best ROM
+                if (rom > state.bestROM) {
+                    state.bestROM = rom;
+                    document.getElementById('bestROM').textContent = `${Math.round(rom)}°`;
+                }
+                
+                // Update average ROM
+                state.repHistory.push({
+                    ...state.currentRepData,
+                    quality: quality,
+                    timestamp: Date.now()
+                });
+                
+                state.avgROM = state.repHistory.reduce((sum, rep) => {
+                    return sum + (rep.maxAngle - rep.minAngle);
+                }, 0) / state.repHistory.length;
+                
+                document.getElementById('avgROM').textContent = `${Math.round(state.avgROM)}°`;
+                
+                // Update rep count
+                document.getElementById('repCount').textContent = state.validReps;
+                
+                // Show success coaching
+                showCoaching("✓ Great rep!", `Quality: ${quality.score}/100`);
+                
+                addLog(`✅ Valid rep #${state.validReps} - Quality: ${quality.score}/100, ROM: ${Math.round(rom)}°`, 'success');
+            } else {
+                showCoaching("⚠️ Invalid rep", quality.reason);
+                addLog(`⚠️ Invalid rep - ${quality.reason}`, 'warning');
+            }
+            
+            // Update stats
+            updateStats();
+            
+            // Reset for next rep
+            setTimeout(() => {
+                state.repState = 'ready';
+                showCoaching("Ready for next rep", "Start with flexion");
+            }, 2000);
+        }
+
+        function calculateRepQuality(repData) {
+            const rom = repData.maxAngle - repData.minAngle;
+            const totalTime = repData.flexionTime + repData.extensionTime;
+            const speedLimits = state.speedLimits[state.speedTolerance];
+            
+            let score = 100;
+            let reasons = [];
+            let isValid = true;
+            
+            // Check ROM
+            if (rom < 70) {
+                score -= 30;
+                reasons.push("Insufficient ROM");
+                isValid = false;
+            }
+            
+            // Check speed
+            if (totalTime < speedLimits.min) {
+                score -= 25;
+                reasons.push("Too fast");
+                repData.speedViolations++;
+            } else if (totalTime > speedLimits.max) {
+                score -= 20;
+                reasons.push("Too slow");
+            }
+            
+            // Check smoothness (angle changes)
+            let maxAngleChange = 0;
+            for (let i = 1; i < repData.angles.length; i++) {
+                const change = Math.abs(repData.angles[i] - repData.angles[i-1]);
+                maxAngleChange = Math.max(maxAngleChange, change);
+            }
+            
+            if (maxAngleChange > 15) {
+                score -= 15;
+                reasons.push("Jerky movement");
+            }
+            
+            // Check if reached baseline extension
+            if (repData.maxAngle < state.baselineExtension - 5) {
+                score -= 20;
+                reasons.push("Didn't reach full extension");
+            }
+            
+            return {
+                score: Math.max(0, score),
+                isValid: isValid,
+                reason: reasons.join(", ") || "Good form",
+                rom: rom,
+                time: totalTime,
+                smoothness: 100 - (maxAngleChange / 15 * 100)
+            };
+        }
+
+        // ============================================
+        // POSE PROCESSING
+        // ============================================
+        async function predictWebcam() {
+            if (!state.webcamRunning) return;
+
+            state.canvasElement.width = state.video.videoWidth;
+            state.canvasElement.height = state.video.videoHeight;
+
+            let startTimeMs = performance.now();
+            
+            if (state.lastVideoTime !== state.video.currentTime) {
+                state.lastVideoTime = state.video.currentTime;
+                const results = state.poseLandmarker.detectForVideo(state.video, startTimeMs);
+                processResults(results);
+            }
+
+            if (state.webcamRunning) {
+                window.requestAnimationFrame(predictWebcam);
+            }
+        }
+
+        function processResults(results) {
+            state.canvasCtx.save();
+            state.canvasCtx.clearRect(0, 0, state.canvasElement.width, state.canvasElement.height);
+
+            if (results.landmarks && results.landmarks.length > 0) {
+                state.detectedPoses = results.landmarks;
+
+                // Handle multiple people
+                if (results.landmarks.length > 1 && state.selectedPersonIndex === null) {
+                    showPersonSelector(results.landmarks.length);
+                } else if (results.landmarks.length === 1) {
+                    state.selectedPersonIndex = 0;
+                    hidePersonSelector();
+                }
+
+                const personIndex = state.selectedPersonIndex !== null ? state.selectedPersonIndex : 0;
+                
+                if (personIndex < results.landmarks.length) {
+                    const landmarks = results.landmarks[personIndex];
+                    
+                    // Draw all poses
+                    results.landmarks.forEach((pose, index) => {
+                        drawPose(pose, index === personIndex);
+                    });
+
+                    // Calculate angles
+                    const leftAngle = calculateKneeAngle(landmarks, 'left');
+                    const rightAngle = calculateKneeAngle(landmarks, 'right');
+                    
+                    // Get active angle
+                    const activeAngle = state.activeSide === 'left' ? leftAngle : rightAngle;
+
+                    updateAngleDisplay(leftAngle, rightAngle);
+                    
+                    // Check warnings
+                    checkWarnings(leftAngle, rightAngle, landmarks);
+                    
+                    // Process calibration or rep tracking
+                    if (state.calibrationInProgress) {
+                        updateCalibration(activeAngle);
+                    } else if (state.sessionStartTime && activeAngle !== null) {
+                        processRepCycle(activeAngle);
+                        updateROMDisplay(activeAngle);
+                    }
+                }
+            } else {
+                document.getElementById('leftAngle').textContent = "--°";
+                document.getElementById('rightAngle').textContent = "--°";
+                state.selectedPersonIndex = null;
+                hidePersonSelector();
+                
+                addWarning("No person detected");
+            }
+
+            state.canvasCtx.restore();
+        }
+
+        function drawPose(landmarks, isSelected = true) {
+            const alpha = isSelected ? 1.0 : 0.3;
+            
+            state.canvasCtx.globalAlpha = alpha;
+            state.drawingUtils.drawConnectors(
+                landmarks,
+                PoseLandmarker.POSE_CONNECTIONS,
+                { color: isSelected ? "#0066FF" : "#666666", lineWidth: 3 }
+            );
+
+            state.drawingUtils.drawLandmarks(landmarks, {
+                color: isSelected ? "#00E5FF" : "#888888",
+                fillColor: isSelected ? "#0066FF" : "#666666",
+                radius: 4
+            });
+
+            if (isSelected) {
+                // Highlight active knee
+                const kneeIndex = state.activeSide === 'left' ? 25 : 26;
+                const knee = landmarks[kneeIndex];
+
+                if (knee) {
+                    state.canvasCtx.beginPath();
+                    state.canvasCtx.arc(
+                        knee.x * state.canvasElement.width,
+                        knee.y * state.canvasElement.height,
+                        20,
+                        0,
+                        2 * Math.PI
+                    );
+                    state.canvasCtx.strokeStyle = "#00E5FF";
+                    state.canvasCtx.lineWidth = 4;
+                    state.canvasCtx.stroke();
+                }
+
+                // Label
+                const nose = landmarks[0];
+                if (nose) {
+                    state.canvasCtx.font = "bold 24px 'Space Mono', monospace";
+                    state.canvasCtx.fillStyle = "#00E5FF";
+                    state.canvasCtx.fillText(
+                        "PATIENT",
+                        nose.x * state.canvasElement.width - 50,
+                        nose.y * state.canvasElement.height - 30
+                    );
+                }
+            }
+
+            state.canvasCtx.globalAlpha = 1.0;
+        }
+
+        function calculateKneeAngle(landmarks, side) {
+            const indices = side === 'left' 
+                ? { hip: 23, knee: 25, ankle: 27 }
+                : { hip: 24, knee: 26, ankle: 28 };
+
+            const hip = landmarks[indices.hip];
+            const knee = landmarks[indices.knee];
+            const ankle = landmarks[indices.ankle];
+
+            if (!hip || !knee || !ankle) return null;
+
+            if (hip.visibility < state.confidenceThreshold || 
+                knee.visibility < state.confidenceThreshold || 
+                ankle.visibility < state.confidenceThreshold) {
+                return null;
+            }
+
+            const v1 = { x: hip.x - knee.x, y: hip.y - knee.y };
+            const v2 = { x: ankle.x - knee.x, y: ankle.y - knee.y };
+
+            const dot = v1.x * v2.x + v1.y * v2.y;
+            const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+            const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+
+            const cosAngle = dot / (mag1 * mag2);
+            const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI);
+
+            return Math.round(angle);
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateAngleDisplay(leftAngle, rightAngle) {
+            const leftBox = document.getElementById('leftAngleBox');
+            const rightBox = document.getElementById('rightAngleBox');
+            
+            document.getElementById('leftAngle').textContent = leftAngle !== null ? `${leftAngle}°` : "--°";
+            document.getElementById('rightAngle').textContent = rightAngle !== null ? `${rightAngle}°` : "--°";
+            
+            // Highlight active side
+            leftBox.classList.toggle('active', state.activeSide === 'left');
+            rightBox.classList.toggle('active', state.activeSide === 'right');
+        }
+
+        function updateROMDisplay(currentAngle) {
+            if (!state.baselineExtension || currentAngle === null) return;
+            
+            const rom = Math.abs(state.baselineExtension - currentAngle);
+            document.getElementById('currentROM').textContent = `${Math.round(rom)}°`;
+            
+            // Update progress bar
+            const maxROM = state.baselineExtension - 30; // Assuming max flexion around 30°
+            const progress = Math.min(100, (rom / maxROM) * 100);
+            document.getElementById('romFill').style.width = `${progress}%`;
+        }
+
+        function updateStats() {
+            const attempted = state.attemptedReps;
+            const valid = state.validReps;
+            const successRate = attempted > 0 ? Math.round((valid / attempted) * 100) : 0;
+            
+            document.getElementById('attemptedReps').textContent = attempted;
+            document.getElementById('successRate').textContent = `${successRate}%`;
+            
+            // Calculate average quality score
+            if (state.repHistory.length > 0) {
+                const avgQuality = state.repHistory.reduce((sum, rep) => sum + rep.quality.score, 0) / state.repHistory.length;
+                document.getElementById('qualityScore').textContent = Math.round(avgQuality);
+            }
+        }
+
+        function checkWarnings(leftAngle, rightAngle, landmarks) {
+            state.warnings.clear();
+            
+            // Check for hyperextension
+            const activeAngle = state.activeSide === 'left' ? leftAngle : rightAngle;
+            if (activeAngle && activeAngle > state.hyperextensionThreshold) {
+                addWarning("⚠️ Hyperextension detected! Reduce extension");
+            }
+            
+            // Check for tracking lost
+            if (activeAngle === null) {
+                addWarning("⚠️ Tracking lost - ensure full body visible");
+            }
+            
+            // Check hip stability (simplified)
+            const leftHip = landmarks[23];
+            const rightHip = landmarks[24];
+            if (leftHip && rightHip) {
+                const hipAngle = Math.abs(leftHip.y - rightHip.y) * 1000;
+                if (hipAngle > 50) {
+                    addWarning("⚠️ Keep hips stable - avoid rotation");
+                }
+            }
+            
+            updateWarningsDisplay();
+        }
+
+        function addWarning(message) {
+            state.warnings.add(message);
+        }
+
+        function updateWarningsDisplay() {
+            const warningsDiv = document.getElementById('warnings');
+            const warningList = document.getElementById('warningList');
+            
+            if (state.warnings.size > 0) {
+                warningsDiv.classList.add('show');
+                warningList.innerHTML = Array.from(state.warnings).map(warning => 
+                    `<div class="warning-item">⚠️ ${warning}</div>`
+                ).join('');
+            } else {
+                warningsDiv.classList.remove('show');
+            }
+        }
+
+        function showCoaching(text, subtext) {
+            if (state.mode !== 'patient') return;
+            
+            const overlay = document.getElementById('coachingOverlay');
+            document.getElementById('coachingText').textContent = text;
+            document.getElementById('coachingSubtext').textContent = subtext;
+            overlay.classList.add('show');
+        }
+
+        function hideCoaching() {
+            document.getElementById('coachingOverlay').classList.remove('show');
+        }
+
+        function updateSessionTimer() {
+            if (!state.sessionStartTime) return;
+            
+            const elapsed = Math.floor((Date.now() - state.sessionStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            document.getElementById('sessionTimer').textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('sessionLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `
+                <div class="log-time">${timestamp}</div>
+                <div class="log-message">${message}</div>
+            `;
+            
+            if (logDiv.querySelector('p')) {
+                logDiv.innerHTML = '';
+            }
+            
+            logDiv.insertBefore(entry, logDiv.firstChild);
+            
+            // Keep only last 50 entries
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        function updateStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+
+        // ============================================
+        // PERSON SELECTION
+        // ============================================
+        function showPersonSelector(numPeople) {
+            const selector = document.getElementById('personSelector');
+            const buttons = document.getElementById('personButtons');
+            
+            selector.classList.add('show');
+            buttons.innerHTML = '';
+
+            for (let i = 0; i < numPeople; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'person-btn';
+                btn.textContent = `Person ${i + 1}`;
+                btn.onclick = () => selectPerson(i);
+                
+                if (i === state.selectedPersonIndex) {
+                    btn.classList.add('active');
+                }
+                
+                buttons.appendChild(btn);
+            }
+        }
+
+        function hidePersonSelector() {
+            document.getElementById('personSelector').classList.remove('show');
+        }
+
+        function selectPerson(index) {
+            state.selectedPersonIndex = index;
+            
+            const buttons = document.querySelectorAll('.person-btn');
+            buttons.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+        }
+
+        // ============================================
+        // EXPORT & REPORTING
+        // ============================================
+        function generateSessionSummary() {
+            const summary = {
+                date: new Date().toLocaleDateString(),
+                duration: document.getElementById('sessionTimer').textContent,
+                activeLeg: state.activeSide,
+                calibrationBaseline: state.baselineExtension,
+                validReps: state.validReps,
+                attemptedReps: state.attemptedReps,
+                successRate: state.attemptedReps > 0 ? Math.round((state.validReps / state.attemptedReps) * 100) : 0,
+                avgROM: Math.round(state.avgROM),
+                bestROM: state.bestROM,
+                avgQuality: state.repHistory.length > 0 
+                    ? Math.round(state.repHistory.reduce((sum, rep) => sum + rep.quality.score, 0) / state.repHistory.length)
+                    : 0,
+                repDetails: state.repHistory
+            };
+            
+            console.log("Session Summary:", summary);
+            
+            addLog(`📊 Session summary generated: ${summary.validReps}/${summary.attemptedReps} reps, ${summary.successRate}% success rate`, 'success');
+            
+            return summary;
+        }
+
+        window.exportToPDF = async function() {
+            const summary = generateSessionSummary();
+            alert("PDF export would generate a detailed clinical report with:\n\n" +
+                  `- Patient: ${state.mode === 'patient' ? 'Self-tracking' : 'Supervised'}\n` +
+                  `- Date: ${summary.date}\n` +
+                  `- Duration: ${summary.duration}\n` +
+                  `- Active Leg: ${summary.activeLeg}\n` +
+                  `- Valid Reps: ${summary.validReps}/${summary.attemptedReps}\n` +
+                  `- Success Rate: ${summary.successRate}%\n` +
+                  `- Avg ROM: ${summary.avgROM}°\n` +
+                  `- Best ROM: ${summary.bestROM}°\n` +
+                  `- Avg Quality: ${summary.avgQuality}/100\n\n` +
+                  "Full implementation would use jsPDF library.");
+        }
+
+        window.exportToCSV = function() {
+            const summary = generateSessionSummary();
+            
+            let csv = "Rep #,ROM (degrees),Quality Score,Flexion Time (ms),Extension Time (ms),Timestamp\n";
+            
+            summary.repDetails.forEach((rep, index) => {
+                const rom = rep.maxAngle - rep.minAngle;
+                csv += `${index + 1},${rom.toFixed(1)},${rep.quality.score},${rep.flexionTime},${rep.extensionTime},${new Date(rep.timestamp).toLocaleTimeString()}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `helify-session-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            
+            addLog('📊 CSV exported successfully', 'success');
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        document.getElementById('calibrateBtn').addEventListener('click', startCalibration);
+        document.getElementById('startBtn').addEventListener('click', startExercise);
+        document.getElementById('stopBtn').addEventListener('click', stopExercise);
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (confirm('Reset session? This will clear all statistics.')) {
+                location.reload();
+            }
+        });
+
+        // Mode selection
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.mode = btn.dataset.mode;
+                
+                if (state.mode === 'physio') {
+                    hideCoaching();
+                }
+            });
+        });
+
+        // Side selection
+        document.querySelectorAll('.side-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (state.sessionStartTime) {
+                    alert("Cannot change active leg during exercise session");
+                    return;
+                }
+                
+                document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.activeSide = btn.dataset.side;
+                state.isCalibrated = false;
+                
+                updateStatus('ready', `Active leg changed to ${state.activeSide}. Please recalibrate.`);
+                addLog(`🔄 Active leg changed to ${state.activeSide}`, 'info');
+                
+                document.getElementById('startBtn').disabled = true;
+            });
+        });
+
+        // Settings
+        document.getElementById('modelSelect').addEventListener('change', async (e) => {
+            if (state.webcamRunning) {
+                alert("Please stop tracking before changing model");
+                e.target.value = state.currentModel || 'full';
+                return;
+            }
+            
+            state.currentModel = e.target.value;
+            await initializePoseLandmarker(e.target.value);
+        });
+
+        document.getElementById('confidenceThreshold').addEventListener('input', (e) => {
+            state.confidenceThreshold = parseFloat(e.target.value);
+            document.getElementById('confidenceValue').textContent = state.confidenceThreshold.toFixed(1);
+            
+            if (state.poseLandmarker) {
+                state.poseLandmarker.setOptions({
+                    minPoseDetectionConfidence: state.confidenceThreshold,
+                    minPosePresenceConfidence: state.confidenceThreshold,
+                    minTrackingConfidence: state.confidenceThreshold
+                });
+            }
+        });
+
+        document.getElementById('speedTolerance').addEventListener('change', (e) => {
+            state.speedTolerance = e.target.value;
+            addLog(`⚙️ Speed tolerance set to: ${state.speedTolerance}`, 'info');
+        });
+
+        // Export buttons
+        document.getElementById('exportPDFBtn').addEventListener('click', exportToPDF);
+        document.getElementById('exportCSVBtn').addEventListener('click', exportToCSV);
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        window.addEventListener('load', () => {
+            initializePoseLandmarker('full');
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (state.webcamRunning) {
+                stopWebcam();
+            }
+        });
+    </script>
+</body>
+</html>
