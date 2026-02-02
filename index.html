@@ -2,50 +2,141 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Helify MVP - Clinical Precision v1</title>
+    <title>Helify MVP - Clinical Precision v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
-        body { margin: 0; background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
-        .app-container { display: flex; flex-direction: column; align-items: center; padding: 20px; width: 100%; max-width: 1280px; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #0f172a; color: white; font-family: 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        .app-container { display: flex; flex-direction: column; align-items: center; padding: 20px; width: 100%; max-width: 1400px; }
         
-        .video-box { position: relative; border: 4px solid #334155; border-radius: 20px; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16/9; max-height: 70vh; }
+        .mode-toggle { position: fixed; top: 20px; right: 20px; z-index: 100; background: #1e293b; padding: 8px; border-radius: 20px; display: flex; gap: 5px; border: 1px solid #334155; }
+        .mode-btn { padding: 8px 16px; border-radius: 15px; border: none; background: transparent; color: #94a3b8; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+        .mode-btn.active { background: #22d3ee; color: #0f172a; }
+        
+        .leg-toggle { position: fixed; top: 20px; left: 20px; z-index: 100; background: #1e293b; padding: 8px; border-radius: 20px; display: flex; gap: 5px; border: 1px solid #334155; }
+        
+        .video-box { position: relative; border: 4px solid #334155; border-radius: 20px; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16/9; max-height: 65vh; margin-top: 60px; }
         canvas { width: 100%; height: 100%; object-fit: cover; }
         
         #ui-layer { position: absolute; top: 20px; left: 20px; pointer-events: none; width: calc(100% - 40px); }
-        .metrics-grid { display: flex; gap: 15px; flex-wrap: wrap; }
-        .metric-card { background: rgba(15, 23, 42, 0.9); padding: 12px 18px; border-radius: 12px; border: 1px solid #1e293b; min-width: 100px; backdrop-filter: blur(4px); }
-        .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-        .value { font-size: 24px; font-weight: bold; color: #22d3ee; }
-        .sub-value { font-size: 12px; color: #cbd5e1; }
+        .metrics-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+        .metric-card { background: rgba(15, 23, 42, 0.95); padding: 12px 16px; border-radius: 12px; border: 1px solid #334155; min-width: 90px; backdrop-filter: blur(8px); transition: opacity 0.3s; }
+        .metric-card.hidden { opacity: 0; pointer-events: none; }
+        .label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+        .value { font-size: 22px; font-weight: bold; color: #22d3ee; }
+        .value.warning { color: #f59e0b; }
+        .value.danger { color: #ef4444; }
+        .sub-value { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
         
-        /* Feedback Toast */
+        #coaching-overlay { 
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95); color: white; padding: 16px 32px; border-radius: 16px;
+            font-size: 20px; font-weight: 700; text-align: center; border: 2px solid #22d3ee;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s;
+            max-width: 80%; line-height: 1.4;
+        }
+        #coaching-overlay.show { opacity: 1; }
+        #coaching-overlay.success { border-color: #22c55e; color: #4ade80; }
+        #coaching-overlay.warning { border-color: #f59e0b; color: #fbbf24; }
+        #coaching-overlay.danger { border-color: #ef4444; color: #f87171; }
+
+        #timeout-bar {
+            position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%);
+            width: 200px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        #timeout-bar.show { opacity: 1; }
+        #timeout-progress {
+            height: 100%; background: #ef4444; border-radius: 2px;
+            width: 0%; transition: width 0.1s linear;
+        }
+        
         #feedback-toast { 
             position: absolute; top: 20px; right: 20px; 
             background: rgba(34, 211, 238, 0.95); color: #0f172a;
-            padding: 15px 25px; border-radius: 12px; font-weight: 800; font-size: 18px;
+            padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 14px;
             transform: translateX(150%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
         #feedback-toast.show { transform: translateX(0); }
-        #feedback-toast.danger { background: #f3fb0c; color: white; }
-        #feedback-toast.warning { background: #f59e0b; color: #0f172a; }
-
+        
+        #warning-box { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(239, 68, 68, 0.95); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: none; font-size: 14px; }
+        
         #action-bar { margin-top: 20px; display: flex; gap: 15px; width: 100%; justify-content: center; }
-        .btn { padding: 12px 30px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 16px; }
+        .btn { padding: 14px 32px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 16px; }
         .btn-finish { background: #22c55e; color: white; box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3); }
         .btn-finish:hover { background: #16a34a; transform: translateY(-2px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
         
         .history-section { width: 100%; margin-top: 30px; background: #1e293b; border-radius: 16px; padding: 25px; border: 1px solid #334155; }
-        h3 { margin-top: 0; color: #e2e8f0; border-bottom: 1px solid #334155; padding-bottom: 15px; }
+        .history-section h3 { margin-top: 0; color: #e2e8f0; border-bottom: 1px solid #334155; padding-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th { text-align: left; color: #94a3b8; padding: 12px; border-bottom: 1px solid #334155; font-weight: 600; }
         td { padding: 12px; border-bottom: 1px solid #334155; color: #f1f5f9; }
-
-        #warning-box { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(222, 250, 43, 0.9); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; display: none; }
+        .score-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }
+        .score-good { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .score-mid { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .score-poor { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        
+        #report-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        #report-modal.show { display: flex; }
+        .report-content { background: #1e293b; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid #334155; }
+        .report-header { background: #0f172a; padding: 25px; border-radius: 20px 20px 0 0; border-bottom: 1px solid #334155; }
+        .report-header h2 { margin: 0 0 5px 0; color: #e2e8f0; }
+        .report-header .subtitle { color: #94a3b8; font-size: 14px; }
+        .report-body { padding: 25px; }
+        .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .report-card { background: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #334155; }
+        .report-card h4 { margin: 0 0 10px 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .report-card .big-number { font-size: 32px; font-weight: bold; color: #22d3ee; margin: 5px 0; }
+        .report-card .comparison { font-size: 13px; color: #64748b; margin-top: 5px; }
+        .report-card .comparison.positive { color: #4ade80; }
+        .report-card .comparison.negative { color: #f87171; }
+        
+        .issues-list { background: #0f172a; border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .issues-list h4 { margin: 0 0 15px 0; color: #e2e8f0; }
+        .issue-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: #cbd5e1; font-size: 14px; }
+        .issue-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+        .issue-dot.warning { background: #f59e0b; }
+        
+        .recommendation-box { background: rgba(34, 211, 238, 0.1); border: 1px solid #22d3ee; border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .recommendation-box h4 { margin: 0 0 10px 0; color: #22d3ee; }
+        .recommendation-box ul { margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 14px; line-height: 1.8; }
+        
+        .report-actions { display: flex; gap: 10px; padding: 0 25px 25px; }
+        .btn-share { background: #22d3ee; color: #0f172a; flex: 1; }
+        .btn-close { background: #334155; color: white; flex: 1; }
+        
+        .physio-panel { display: none; margin-top: 20px; background: #1e293b; border-radius: 16px; padding: 20px; border: 1px solid #334155; width: 100%; }
+        .physio-mode .physio-panel { display: block; }
+        .rep-table { width: 100%; font-size: 13px; max-height: 300px; overflow-y: auto; }
+        .rep-table th, .rep-table td { padding: 10px; font-size: 12px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge-error { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        
+        .score-display { position: absolute; top: 20px; right: 20px; background: rgba(15, 23, 42, 0.95); padding: 15px 20px; border-radius: 12px; border: 1px solid #334155; text-align: center; }
+        .score-display .score-value { font-size: 36px; font-weight: bold; color: #22d3ee; }
+        .score-display .score-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; margin-top: 4px; }
+        
+        .live-metrics { display: flex; gap: 15px; position: absolute; bottom: 20px; left: 20px; }
+        .live-metric { background: rgba(15, 23, 42, 0.9); padding: 10px 15px; border-radius: 8px; font-size: 12px; border: 1px solid #334155; }
+        .live-metric-label { color: #94a3b8; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
     </style>
 </head>
 <body>
+
+<div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('patient')">Patient</button>
+    <button class="mode-btn" onclick="setMode('physio')">Physio</button>
+</div>
+
+<div class="leg-toggle">
+    <button class="mode-btn active" onclick="setLeg('left')" id="btn-left">Left</button>
+    <button class="mode-btn" onclick="setLeg('right')" id="btn-right">Right</button>
+</div>
 
 <div class="app-container">
     <div class="video-box">
@@ -53,40 +144,95 @@
         <canvas id="output_canvas" width="1280" height="720"></canvas>
         
         <div id="ui-layer">
-            <div class="metrics-grid">
+            <div class="metrics-grid" id="patient-metrics">
                 <div class="metric-card">
                     <div class="label">Valid Reps</div>
                     <div id="rep_count" class="value">0</div>
+                    <div class="sub-value" id="rep_ratio">0/0</div>
                 </div>
                 <div class="metric-card">
-                    <div class="label">Angle</div>
-                    <div id="angle_display" class="value">180°</div>
+                    <div class="label">Knee Flexion</div>
+                    <div id="angle_display" class="value">0°</div>
+                    <div class="sub-value">Anatomical: 0° = straight</div>
+                </div>
+            </div>
+            
+            <div class="metrics-grid" id="physio-metrics" style="display:none;">
+                <div class="metric-card">
+                    <div class="label">Valid/Attempted</div>
+                    <div id="rep_count_detailed" class="value">0/0</div>
                 </div>
                 <div class="metric-card">
-                    <div class="label">Pace</div>
-                    <div id="pace_display" class="value">--</div>
+                    <div class="label">Flexion Angle</div>
+                    <div id="angle_detailed" class="value">0°</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Hip Stability</div>
+                    <div id="hip_stability" class="value">Good</div>
+                    <div class="sub-value">Variance: <span id="hip_var">0</span>px</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Smoothness</div>
+                    <div id="smoothness" class="value">Good</div>
+                    <div class="sub-value">Jerk: <span id="jerk_val">0</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Rep Time</div>
+                    <div id="rep_time" class="value">--</div>
                     <div class="sub-value">Target: 2-4s</div>
                 </div>
             </div>
         </div>
 
-        <div id="feedback-toast">Ready</div>
-        <div id="warning-box">⚠️ Please show your full Left Leg</div>
+        <div id="coaching-overlay">Ready to start</div>
+        <div id="timeout-bar"><div id="timeout-progress"></div></div>
+        <div id="feedback-toast"></div>
+        <div id="warning-box">⚠️ Please show your full leg</div>
+        
+        <div class="score-display" id="score-display" style="display:none;">
+            <div class="score-value" id="current-score">--</div>
+            <div class="score-label">Quality Score</div>
+        </div>
     </div>
 
     <div id="action-bar">
-        <button class="btn btn-finish" onclick="saveSession()">Finish & Save Session</button>
+        <button class="btn btn-finish" onclick="finishSession()" id="finish-btn">Finish Session</button>
+    </div>
+
+    <div class="physio-panel">
+        <h3 style="margin-top:0;color:#e2e8f0;">Rep-by-Rep Analysis</h3>
+        <div style="overflow-x:auto;">
+            <table class="rep-table">
+                <thead>
+                    <tr>
+                        <th>Rep #</th>
+                        <th>Status</th>
+                        <th>Min Angle</th>
+                        <th>ROM</th>
+                        <th>Duration</th>
+                        <th>Smoothness</th>
+                        <th>Hip Stability</th>
+                        <th>Quality Score</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="rep-table-body"></tbody>
+            </table>
+        </div>
     </div>
 
     <div class="history-section">
-        <h3>📊 Session History</h3>
+        <h3>📊 Session History <span style="font-weight:normal;font-size:14px;color:#64748b;">(Last 10 sessions)</span></h3>
         <table>
             <thead>
                 <tr>
                     <th>Date</th>
-                    <th>Reps (Valid)</th>
+                    <th>Side</th>
+                    <th>Reps (Valid/Total)</th>
                     <th>Avg ROM</th>
-                    <th>Avg Speed</th>
+                    <th>Best ROM</th>
+                    <th>Quality Score</th>
+                    <th>Warnings</th>
                 </tr>
             </thead>
             <tbody id="history-body"></tbody>
@@ -94,127 +240,593 @@
     </div>
 </div>
 
+<div id="report-modal">
+    <div class="report-content">
+        <div class="report-header">
+            <h2>🏥 Helify Exercise Report</h2>
+            <div class="subtitle" id="report-subtitle">Session Summary</div>
+        </div>
+        <div class="report-body">
+            <div class="report-grid">
+                <div class="report-card">
+                    <h4>Valid Reps</h4>
+                    <div class="big-number" id="report-valid">0</div>
+                    <div class="comparison" id="report-rep-trend">--</div>
+                </div>
+                <div class="report-card">
+                    <h4>Success Rate</h4>
+                    <div class="big-number" id="report-rate">0%</div>
+                </div>
+                <div class="report-card">
+                    <h4>Average ROM</h4>
+                    <div class="big-number" id="report-rom">0°</div>
+                    <div class="comparison" id="report-rom-trend">--</div>
+                </div>
+                <div class="report-card">
+                    <h4>Quality Score</h4>
+                    <div class="big-number" id="report-score">0</div>
+                    <div class="comparison" id="report-score-trend">--</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                <div class="report-card">
+                    <h4>Avg Rep Time</h4>
+                    <div style="font-size: 24px; font-weight: bold; color: #e2e8f0;" id="report-time">0s</div>
+                </div>
+                <div class="report-card">
+                    <h4>Best ROM</h4>
+                    <div style="font-size: 24px; font-weight: bold; color: #e2e8f0;" id="report-best">0°</div>
+                </div>
+            </div>
+            
+            <div class="issues-list">
+                <h4>⚠️ Top Issues Detected</h4>
+                <div id="issues-container"></div>
+            </div>
+            
+            <div class="recommendation-box">
+                <h4>💡 Suggested Next Focus</h4>
+                <ul id="recommendations-list"></ul>
+            </div>
+        </div>
+        <div class="report-actions">
+            <button class="btn btn-share" onclick="shareReport()">📋 Copy Summary</button>
+            <button class="btn btn-close" onclick="closeReport()">Close</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // ============ CONFIGURATION ============
+    const CONFIG = {
+        ROM: { 
+            STAND_THRESHOLD: 15,    // Anatomical: within 15° of full extension
+            DEEP_THRESHOLD: 70,     // Anatomical: at least 70° flexion
+            MAX_SAFE: -5            // Anatomical: hyperextension beyond -5°
+        },
+        SPEED: { 
+            MIN_TIME: 2.0,
+            MAX_TIME: 6.0,
+            OPTIMAL_MIN: 2.5,
+            OPTIMAL_MAX: 4.0
+        },
+        STABILITY: {
+            HIP_THRESHOLD: 0.03,
+            SMOOTHNESS_WINDOW: 10,
+            JERK_THRESHOLD: 15
+        },
+        TIMEOUT: 8.0, // seconds to auto-reset stuck rep
+        SCORING: {
+            ROM_WEIGHT: 0.40,
+            TEMPO_WEIGHT: 0.30,
+            CONTROL_WEIGHT: 0.30
+        }
+    };
+
+    // ============ STATE ============
+    let state = {
+        mode: 'patient',
+        leg: 'left',
+        
+        phase: 'STANDING',
+        repStartTime: 0,
+        repCount: 0,
+        validReps: 0,
+        totalRepsAttempted: 0,
+        
+        currentRepMinAngle: 180, // geometric
+        currentRepMaxFlexion: 0, // anatomical (0-180)
+        currentRepStartHipY: 0,
+        currentRepHipVariance: 0,
+        currentRepHyperextended: false, // per-rep flag
+        
+        // Smoothness tracking - reset per rep
+        angleHistory: [],
+        lastAngle: 180,
+        lastVelocity: 0,
+        maxJerk: 0,
+        
+        // Timeout tracking
+        timeoutStartTime: 0,
+        
+        // Session totals
+        sumRoM: 0,
+        sumDuration: 0,
+        bestROM: 0,
+        totalScore: 0,
+        repLogs: [],
+        
+        // Warnings - session totals
+        hyperextensionWarnings: 0,
+        trackingLostCount: 0,
+        hipStabilityFails: 0,
+        jerkFails: 0,
+        
+        // Issue tracking
+        issues: {
+            incompleteROM: 0,
+            tooFast: 0,
+            tooSlow: 0,
+            hyperextension: 0,
+            hipStability: 0,
+            jerky: 0
+        }
+    };
+
+    // ============ DOM ELEMENTS ============
     const videoElement = document.getElementById('input_video');
     const canvasElement = document.getElementById('output_canvas');
     const canvasCtx = canvasElement.getContext('2d');
     
     const elAngle = document.getElementById('angle_display');
+    const elAngleDetailed = document.getElementById('angle_detailed');
     const elReps = document.getElementById('rep_count');
-    const elPace = document.getElementById('pace_display');
+    const elRepRatio = document.getElementById('rep_ratio');
+    const elRepsDetailed = document.getElementById('rep_count_detailed');
+    const elHipStability = document.getElementById('hip_stability');
+    const elHipVar = document.getElementById('hip_var');
+    const elSmoothness = document.getElementById('smoothness');
+    const elJerkVal = document.getElementById('jerk_val');
+    const elRepTime = document.getElementById('rep_time');
+    const elCoaching = document.getElementById('coaching-overlay');
     const elToast = document.getElementById('feedback-toast');
+    const elScoreDisplay = document.getElementById('score-display');
+    const elCurrentScore = document.getElementById('current-score');
+    const elTimeoutBar = document.getElementById('timeout-bar');
+    const elTimeoutProgress = document.getElementById('timeout-progress');
 
-    const CONFIG = {
-        ROM: { 
-            STAND_THRESHOLD: 165, // Rep starts/ends here
-            DEEP_THRESHOLD: 110,  // Minimum depth
-            MAX_SAFE: 175         // Hyperextension warning
-        },
-        SPEED: { 
-            MIN_TIME: 2.0, // Too fast (Momentum)
-            MAX_TIME: 6.0  // Too slow (Stalling)
-        }
-    };
-
-    let state = {
-        phase: 'STANDING', 
-        repStartTime: 0,
-        repCount: 0,
+    // ============ INITIALIZATION ============
+    function init() {
+        const savedMode = localStorage.getItem('helify_mode');
+        const savedLeg = localStorage.getItem('helify_leg');
         
-        currentRepMinAngle: 180,
+        if (savedMode) setMode(savedMode);
+        if (savedLeg) setLeg(savedLeg);
         
-        validReps: 0,
-        totalRepsAttempted: 0,
-        sumRoM: 0,
-        sumDuration: 0
-    };
-
-    function showFeedback(text, type = 'neutral') {
-        elToast.innerText = text;
-        elToast.className = type + ' show';
-        setTimeout(() => { if(elToast.innerText === text) elToast.classList.remove('show'); }, 2000);
+        renderHistory();
     }
 
+    function setMode(mode) {
+        state.mode = mode;
+        localStorage.setItem('helify_mode', mode);
+        
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.toLowerCase() === mode) btn.classList.add('active');
+        });
+        
+        document.body.classList.toggle('physio-mode', mode === 'physio');
+        
+        document.getElementById('patient-metrics').style.display = mode === 'patient' ? 'flex' : 'none';
+        document.getElementById('physio-metrics').style.display = mode === 'physio' ? 'flex' : 'none';
+        elScoreDisplay.style.display = mode === 'physio' ? 'block' : 'none';
+    }
+
+    function setLeg(leg) {
+        state.leg = leg;
+        localStorage.setItem('helify_leg', leg);
+        
+        document.getElementById('btn-left').classList.toggle('active', leg === 'left');
+        document.getElementById('btn-right').classList.toggle('active', leg === 'right');
+        
+        resetSession();
+        showFeedback(`Switched to ${leg} leg`, 'neutral');
+    }
+
+    function resetSession() {
+        state.phase = 'STANDING';
+        state.repCount = 0;
+        state.validReps = 0;
+        state.totalRepsAttempted = 0;
+        state.sumRoM = 0;
+        state.sumDuration = 0;
+        state.bestROM = 0;
+        state.totalScore = 0;
+        state.repLogs = [];
+        state.hyperextensionWarnings = 0;
+        state.trackingLostCount = 0;
+        state.hipStabilityFails = 0;
+        state.jerkFails = 0;
+        state.issues = {
+            incompleteROM: 0, tooFast: 0, tooSlow: 0,
+            hyperextension: 0, hipStability: 0, jerky: 0
+        };
+        resetRepTracking();
+        updateUI();
+        document.getElementById('rep-table-body').innerHTML = '';
+        hideTimeoutBar();
+    }
+
+    function resetRepTracking() {
+        // Per-rep reset
+        state.angleHistory = [];
+        state.lastAngle = 180;
+        state.lastVelocity = 0;
+        state.maxJerk = 0;
+        state.currentRepHyperextended = false;
+        state.currentRepHipVariance = 0;
+        state.timeoutStartTime = 0;
+    }
+
+    // ============ COACHING SYSTEM ============
+    function showCoaching(text, type = 'neutral') {
+        elCoaching.textContent = text;
+        elCoaching.className = 'show ' + type;
+        
+        if (type !== 'danger') {
+            setTimeout(() => {
+                if (elCoaching.textContent === text) {
+                    elCoaching.classList.remove('show');
+                }
+            }, 3000);
+        }
+    }
+
+    function showFeedback(text, type = 'neutral') {
+        elToast.textContent = text;
+        elToast.className = 'show';
+        setTimeout(() => elToast.classList.remove('show'), 2500);
+    }
+
+    // ============ TIMEOUT HANDLING ============
+    function showTimeoutBar() {
+        elTimeoutBar.classList.add('show');
+    }
+
+    function hideTimeoutBar() {
+        elTimeoutBar.classList.remove('show');
+        elTimeoutProgress.style.width = '0%';
+    }
+
+    function updateTimeoutProgress(elapsed) {
+        const progress = (elapsed / CONFIG.TIMEOUT) * 100;
+        elTimeoutProgress.style.width = Math.min(progress, 100) + '%';
+    }
+
+    function checkTimeout(now) {
+        if (state.phase === 'STANDING') return false;
+        
+        const elapsed = now - state.repStartTime;
+        updateTimeoutProgress(elapsed);
+        
+        if (elapsed > CONFIG.TIMEOUT) {
+            // Auto-reset stuck rep
+            state.phase = 'STANDING';
+            state.totalRepsAttempted++;
+            resetRepTracking();
+            hideTimeoutBar();
+            
+            const repLog = {
+                repNumber: state.totalRepsAttempted,
+                isValid: false,
+                minAngle: 180,
+                rom: 0,
+                duration: elapsed.toFixed(1),
+                smoothness: 'N/A',
+                hipStable: 'N/A',
+                qualityScore: 0,
+                reason: 'Timeout (incomplete)'
+            };
+            state.repLogs.push(repLog);
+            
+            if (state.mode === 'physio') {
+                addRepToTable(repLog);
+            }
+            
+            showCoaching("Rep cancelled - took too long", "warning");
+            updateUI();
+            return true;
+        }
+        return false;
+    }
+
+    // ============ SMOOTHNESS DETECTION ============
+    function updateSmoothness(angle) {
+        const velocity = angle - state.lastAngle;
+        const jerk = Math.abs(velocity - state.lastVelocity);
+        
+        state.angleHistory.push({ angle, velocity, jerk });
+        if (state.angleHistory.length > CONFIG.STABILITY.SMOOTHNESS_WINDOW) {
+            state.angleHistory.shift();
+        }
+        
+        state.maxJerk = Math.max(state.maxJerk, jerk);
+        state.lastAngle = angle;
+        state.lastVelocity = velocity;
+        
+        return jerk;
+    }
+
+    function getSmoothnessScore() {
+        if (state.angleHistory.length < 5) return 100;
+        const avgJerk = state.angleHistory.reduce((a, b) => a + b.jerk, 0) / state.angleHistory.length;
+        return Math.max(0, 100 - (avgJerk * 5));
+    }
+
+    function isJerky() {
+        return state.maxJerk > CONFIG.STABILITY.JERK_THRESHOLD;
+    }
+
+    // ============ HIP STABILITY ============
+    function updateHipStability(currentHipY) {
+        if (state.phase === 'DESCENDING' || state.phase === 'ASCENDING') {
+            const variance = Math.abs(currentHipY - state.currentRepStartHipY);
+            state.currentRepHipVariance = Math.max(state.currentRepHipVariance, variance);
+        }
+        return state.currentRepHipVariance;
+    }
+
+    function isHipStable() {
+        return state.currentRepHipVariance < CONFIG.STABILITY.HIP_THRESHOLD;
+    }
+
+    // ============ ANATOMICAL ANGLE CONVERSION ============
+    function toAnatomical(geometricAngle) {
+        // Geometric: 180° = straight, 0° = fully bent
+        // Anatomical: 0° = straight, 180° = fully bent
+        return Math.max(0, Math.min(180, 180 - geometricAngle));
+    }
+
+    // ============ QUALITY SCORING ============
+    function calculateRepQuality(duration, rom, smoothnessScore, hipStable, hyperextended) {
+        let score = 0;
+        
+        // ROM Score (40%) - target 70°+ flexion
+        const romPercent = Math.min(100, (rom / 70) * 100);
+        score += romPercent * CONFIG.SCORING.ROM_WEIGHT;
+        
+        // Tempo Score (30%)
+        let tempoScore = 0;
+        if (duration >= CONFIG.SPEED.OPTIMAL_MIN && duration <= CONFIG.SPEED.OPTIMAL_MAX) {
+            tempoScore = 100;
+        } else if (duration >= CONFIG.SPEED.MIN_TIME && duration <= CONFIG.SPEED.MAX_TIME) {
+            tempoScore = 70;
+        } else {
+            tempoScore = 40;
+        }
+        score += tempoScore * CONFIG.SCORING.TEMPO_WEIGHT;
+        
+        // Control Score (30%)
+        let controlScore = smoothnessScore;
+        if (!hipStable) controlScore *= 0.7;
+        if (hyperextended) controlScore *= 0.5;
+        score += controlScore * CONFIG.SCORING.CONTROL_WEIGHT;
+        
+        return Math.round(score);
+    }
+
+    function getCoachingCue(valid, issues) {
+        if (!valid) {
+            if (issues.hyperextension) return "Don't lock your knee fully";
+            if (issues.jerky) return "Control the movement, don't swing";
+            if (issues.hipStability) return "Keep your hip steady";
+            if (issues.incompleteROM) return "Bend your knee more";
+            if (issues.tooFast) return "Slow down, maintain control";
+            if (issues.tooSlow) return "Maintain steady pace";
+        }
+        return "Great form! Keep it up";
+    }
+
+    // ============ MAIN PROCESSING ============
     function processFrame(landmarks) {
         const now = performance.now() / 1000;
         
-        const leftHip = landmarks[23];
-        const leftKnee = landmarks[25];
-        const leftAnkle = landmarks[27];
+        // Check timeout first
+        if (checkTimeout(now)) return { isSafe: true, angle: 0, hip: null, knee: null, ankle: null, smoothnessScore: 100 };
         
-        const angle = calculateAngle(leftHip, leftKnee, leftAnkle);
-        elAngle.innerText = Math.round(angle) + "°";
-
-        let isSafe = true;
-        if (angle > CONFIG.ROM.MAX_SAFE) {
-            showFeedback("Do not overextend", "danger");
-            elAngle.style.color = "#f3fb0c";
-            isSafe = false;
-        } else {
-            elAngle.style.color = "#22d3ee";
+        const hipIdx = state.leg === 'left' ? 23 : 24;
+        const kneeIdx = state.leg === 'left' ? 25 : 26;
+        const ankleIdx = state.leg === 'left' ? 27 : 28;
+        
+        const hip = landmarks[hipIdx];
+        const knee = landmarks[kneeIdx];
+        const ankle = landmarks[ankleIdx];
+        
+        const geometricAngle = calculateAngle(hip, knee, ankle);
+        const anatomicalAngle = toAnatomical(geometricAngle);
+        const jerk = updateSmoothness(geometricAngle);
+        const smoothnessScore = getSmoothnessScore();
+        
+        // Update displays with anatomical angle
+        elAngle.textContent = Math.round(anatomicalAngle) + "°";
+        if (state.mode === 'physio') {
+            elAngleDetailed.textContent = Math.round(anatomicalAngle) + "°";
+            elJerkVal.textContent = state.maxJerk.toFixed(1);
+            elSmoothness.textContent = smoothnessScore > 80 ? 'Good' : smoothnessScore > 50 ? 'Fair' : 'Poor';
+            elSmoothness.className = 'value ' + (smoothnessScore > 80 ? '' : smoothnessScore > 50 ? 'warning' : 'danger');
         }
-
-        if (state.phase === 'STANDING' && angle < CONFIG.ROM.STAND_THRESHOLD) {
+        
+        // Safety check - hyperextension (anatomical < 0 or negative)
+        let isSafe = true;
+        if (anatomicalAngle < CONFIG.ROM.MAX_SAFE) { // MAX_SAFE is -5 in anatomical
+            showCoaching("Don't lock your knee fully", "danger");
+            elAngle.classList.add('danger');
+            isSafe = false;
+            state.currentRepHyperextended = true; // Per-rep flag
+        } else {
+            elAngle.classList.remove('danger');
+        }
+        
+        // Phase detection using anatomical angles
+        // Standing = near extension (< 15°), Deep = at least 70° flexion
+        if (state.phase === 'STANDING' && anatomicalAngle > CONFIG.ROM.STAND_THRESHOLD) {
             state.phase = 'DESCENDING';
             state.repStartTime = now;
-            state.currentRepMinAngle = 180;
-        }
-
-        if (state.phase === 'DESCENDING' || state.phase === 'ASCENDING') {
-            if (angle < state.currentRepMinAngle) state.currentRepMinAngle = angle;
+            state.currentRepMinAngle = geometricAngle; // track geometric for calculations
+            state.currentRepMaxFlexion = anatomicalAngle;
+            state.currentRepStartHipY = hip.y;
+            state.currentRepHipVariance = 0;
+            state.currentRepHyperextended = false;
+            state.maxJerk = 0; // Reset jerk per rep
+            state.angleHistory = []; // Reset history per rep
             
-            // Turn around point
-            if (state.phase === 'DESCENDING' && angle < CONFIG.ROM.DEEP_THRESHOLD) {
+            showTimeoutBar();
+            showCoaching("Lower slowly...", "neutral");
+        }
+        
+        if (state.phase === 'DESCENDING' || state.phase === 'ASCENDING') {
+            if (anatomicalAngle > state.currentRepMaxFlexion) {
+                state.currentRepMaxFlexion = anatomicalAngle;
+                state.currentRepMinAngle = geometricAngle;
+            }
+            
+            const hipVar = updateHipStability(hip.y);
+            if (state.mode === 'physio') {
+                elHipVar.textContent = (hipVar * 100).toFixed(1);
+                elHipStability.textContent = hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? 'Stable' : 'Unstable';
+                elHipStability.className = 'value ' + (hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? '' : 'warning');
+            }
+            
+            if (state.phase === 'DESCENDING' && anatomicalAngle > CONFIG.ROM.DEEP_THRESHOLD) {
                 state.phase = 'ASCENDING';
+                showCoaching("Now extend slowly", "neutral");
             }
         }
-
-        if (state.phase === 'ASCENDING' && angle > CONFIG.ROM.STAND_THRESHOLD) {
-            finishRep(now);
+        
+        if (state.phase === 'ASCENDING' && anatomicalAngle < CONFIG.ROM.STAND_THRESHOLD) {
+            finishRep(now, smoothnessScore);
         }
-
-        return isSafe; // Return safety for color coding
+        
+        if (state.phase !== 'STANDING' && state.mode === 'physio') {
+            const elapsed = now - state.repStartTime;
+            elRepTime.textContent = elapsed.toFixed(1) + "s";
+        }
+        
+        return { isSafe, angle: anatomicalAngle, hip, knee, ankle, smoothnessScore };
     }
 
-    function finishRep(now) {
+    function finishRep(now, smoothnessScore) {
         state.phase = 'STANDING';
-        
-        const duration = now - state.repStartTime;
-        const depth = state.currentRepMinAngle;
-        
+        hideTimeoutBar();
         state.totalRepsAttempted++;
         
+        const duration = now - state.repStartTime;
+        const rom = state.currentRepMaxFlexion; // Anatomical ROM = max flexion achieved
+        const hipStable = isHipStable();
+        const jerky = isJerky();
+        const hyperextended = state.currentRepHyperextended; // Per-rep flag, not session total
+        
         let isValid = true;
-        let feedbackMsg = "Good Rep!";
-        let feedbackType = "neutral";
-
-        if (depth > CONFIG.ROM.DEEP_THRESHOLD) {
+        const issues = {
+            incompleteROM: false,
+            tooFast: false,
+            tooSlow: false,
+            hyperextension: hyperextended,
+            hipStability: !hipStable,
+            jerky: jerky
+        };
+        
+        if (rom < 50) {
             isValid = false;
-            feedbackMsg = "Increase range"; 
-            feedbackType = "warning";
+            issues.incompleteROM = true;
+            state.issues.incompleteROM++;
         }
-        else if (duration < CONFIG.SPEED.MIN_TIME) {
+        if (duration < CONFIG.SPEED.MIN_TIME) {
             isValid = false;
-            feedbackMsg = "Slow down"; 
-            feedbackType = "danger";
+            issues.tooFast = true;
+            state.issues.tooFast++;
+        } else if (duration > CONFIG.SPEED.MAX_TIME) {
+            issues.tooSlow = true;
+            state.issues.tooSlow++;
         }
-        else if (duration > CONFIG.SPEED.MAX_TIME) {
-            feedbackMsg = "Maintain steady pace";
-            feedbackType = "warning";
-        }
-
-        elPace.innerText = duration.toFixed(1) + "s";
-
+        if (!hipStable) state.issues.hipStability++;
+        if (jerky) state.issues.jerky++;
+        if (hyperextended) state.issues.hyperextension++;
+        
+        const qualityScore = calculateRepQuality(duration, rom, smoothnessScore, hipStable, hyperextended);
+        
         if (isValid) {
             state.validReps++;
-            elReps.innerText = state.validReps;
-            
-            state.sumRoM += (180 - depth);
+            state.sumRoM += rom;
             state.sumDuration += duration;
-            
-            showFeedback(feedbackMsg, 'show'); 
+            state.totalScore += qualityScore;
+            if (rom > state.bestROM) state.bestROM = rom;
+            showCoaching(getCoachingCue(true, issues), "success");
         } else {
-            showFeedback(feedbackMsg, feedbackType);
+            showCoaching(getCoachingCue(false, issues), issues.jerky || issues.hyperextension ? "danger" : "warning");
+        }
+        
+        const repLog = {
+            repNumber: state.totalRepsAttempted,
+            isValid,
+            minAngle: Math.round(toAnatomical(state.currentRepMinAngle)),
+            rom: Math.round(rom),
+            duration: duration.toFixed(1),
+            smoothness: smoothnessScore > 80 ? 'Good' : smoothnessScore > 50 ? 'Fair' : 'Poor',
+            hipStable: hipStable ? 'Stable' : 'Unstable',
+            qualityScore,
+            reason: getReasonText(issues)
+        };
+        state.repLogs.push(repLog);
+        
+        if (state.mode === 'physio') {
+            addRepToTable(repLog);
+            elCurrentScore.textContent = qualityScore;
+            elCurrentScore.style.color = qualityScore > 80 ? '#4ade80' : qualityScore > 60 ? '#fbbf24' : '#f87171';
+        }
+        
+        updateUI();
+    }
+
+    function getReasonText(issues) {
+        if (issues.incompleteROM) return "Insufficient ROM";
+        if (issues.tooFast) return "Too fast";
+        if (issues.tooSlow) return "Too slow";
+        if (issues.jerky) return "Jerky movement";
+        if (issues.hipStability) return "Hip unstable";
+        if (issues.hyperextension) return "Hyperextension";
+        return "Good rep";
+    }
+
+    function addRepToTable(log) {
+        const tbody = document.getElementById('rep-table-body');
+        const row = document.createElement('tr');
+        
+        const statusClass = log.isValid ? 'badge-success' : 'badge-error';
+        const smoothClass = log.smoothness === 'Good' ? 'badge-success' : log.smoothness === 'Fair' ? 'badge-warn' : 'badge-error';
+        const hipClass = log.hipStable === 'Stable' ? 'badge-success' : 'badge-warn';
+        const scoreClass = log.qualityScore > 80 ? 'score-good' : log.qualityScore > 60 ? 'score-mid' : 'score-poor';
+        
+        row.innerHTML = `
+            <td>${log.repNumber}</td>
+            <td><span class="badge ${statusClass}">${log.isValid ? 'Valid' : 'Invalid'}</span></td>
+            <td>${log.minAngle}°</td>
+            <td>${log.rom}°</td>
+            <td>${log.duration}s</td>
+            <td><span class="badge ${smoothClass}">${log.smoothness}</span></td>
+            <td><span class="badge ${hipClass}">${log.hipStable}</span></td>
+            <td><span class="score-badge ${scoreClass}">${log.qualityScore}</span></td>
+            <td style="font-size:11px;color:#94a3b8;">${log.reason}</td>
+        `;
+        tbody.insertBefore(row, tbody.firstChild);
+    }
+
+    function updateUI() {
+        elReps.textContent = state.validReps;
+        elRepRatio.textContent = `${state.validReps}/${state.totalRepsAttempted}`;
+        if (state.mode === 'physio') {
+            elRepsDetailed.textContent = `${state.validReps}/${state.totalRepsAttempted}`;
         }
     }
 
@@ -225,41 +837,190 @@
         return angle;
     }
 
-    function saveSession() {
-        if (state.validReps === 0) { alert("No valid reps yet!"); return; }
+    // ============ SESSION MANAGEMENT ============
+    function finishSession() {
+        if (state.validReps === 0) {
+            alert("No valid reps completed yet!");
+            return;
+        }
         
         const avgRom = Math.round(state.sumRoM / state.validReps);
         const avgSpeed = (state.sumDuration / state.validReps).toFixed(1);
-
-        const session = {
-            date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-            reps: `${state.validReps}/${state.totalRepsAttempted}`,
-            rom: avgRom + "°",
-            speed: avgSpeed + "s"
-        };
-
-        let history = JSON.parse(localStorage.getItem('helify_v1_history') || "[]");
-        history.unshift(session);
-        localStorage.setItem('helify_v1_history', JSON.stringify(history.slice(0, 10)));
+        const avgQuality = Math.round(state.totalScore / state.validReps);
+        const successRate = Math.round((state.validReps / state.totalRepsAttempted) * 100);
         
+        const session = {
+            id: Date.now(),
+            date: new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+            side: state.leg.toUpperCase(),
+            validReps: state.validReps,
+            attemptedReps: state.totalRepsAttempted,
+            successRate: successRate,
+            avgRom: avgRom,
+            bestRom: state.bestROM,
+            avgSpeed: avgSpeed,
+            qualityScore: avgQuality,
+            warnings: state.hyperextensionWarnings + state.hipStabilityFails + state.jerkFails,
+            issueBreakdown: {...state.issues},
+            repLogs: state.repLogs
+        };
+        
+        let history = JSON.parse(localStorage.getItem('helify_sessions') || "[]");
+        history.unshift(session);
+        localStorage.setItem('helify_sessions', JSON.stringify(history.slice(0, 10)));
+        
+        showReport(session);
         renderHistory();
-        location.reload();
+        resetSession();
+    }
+
+    function showReport(session) {
+        const history = JSON.parse(localStorage.getItem('helify_sessions') || "[]");
+        const prevSession = history.find(s => s.id !== session.id);
+        
+        document.getElementById('report-subtitle').textContent = 
+            `${session.date} | ${session.side} Leg | ${state.totalRepsAttempted} reps attempted`;
+        
+        document.getElementById('report-valid').textContent = session.validReps;
+        document.getElementById('report-rate').textContent = session.successRate + "%";
+        document.getElementById('report-rom').textContent = session.avgRom + "°";
+        document.getElementById('report-score').textContent = session.qualityScore;
+        document.getElementById('report-time').textContent = session.avgSpeed + "s";
+        document.getElementById('report-best').textContent = session.bestRom + "°";
+        
+        if (prevSession) {
+            const repTrend = session.validReps - prevSession.validReps;
+            const romTrend = session.avgRom - prevSession.avgRom;
+            const scoreTrend = session.qualityScore - prevSession.qualityScore;
+            
+            document.getElementById('report-rep-trend').textContent = 
+                (repTrend >= 0 ? "↑ " : "↓ ") + Math.abs(repTrend) + " from last";
+            document.getElementById('report-rep-trend').className = "comparison " + (repTrend >= 0 ? "positive" : "negative");
+            
+            document.getElementById('report-rom-trend').textContent = 
+                (romTrend >= 0 ? "↑ " : "↓ ") + Math.abs(romTrend) + "° from last";
+            document.getElementById('report-rom-trend').className = "comparison " + (romTrend >= 0 ? "positive" : "negative");
+            
+            document.getElementById('report-score-trend').textContent = 
+                (scoreTrend >= 0 ? "↑ " : "↓ ") + Math.abs(scoreTrend) + " pts";
+            document.getElementById('report-score-trend').className = "comparison " + (scoreTrend >= 0 ? "positive" : "negative");
+        } else {
+            document.getElementById('report-rep-trend').textContent = "First session";
+            document.getElementById('report-rom-trend').textContent = "Baseline";
+            document.getElementById('report-score-trend').textContent = "Baseline";
+        }
+        
+        const issuesContainer = document.getElementById('issues-container');
+        issuesContainer.innerHTML = '';
+        
+        const sortedIssues = Object.entries(session.issueBreakdown)
+            .filter(([_, count]) => count > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+        
+        if (sortedIssues.length === 0) {
+            issuesContainer.innerHTML = '<div class="issue-item" style="color:#4ade80;">✓ No major issues detected</div>';
+        } else {
+            const issueNames = {
+                incompleteROM: "Incomplete range of motion",
+                tooFast: "Reps too fast (momentum)",
+                tooSlow: "Reps too slow (stalling)",
+                hyperextension: "Knee hyperextension",
+                hipStability: "Hip instability (cheating)",
+                jerky: "Jerky movement"
+            };
+            
+            sortedIssues.forEach(([key, count]) => {
+                const div = document.createElement('div');
+                div.className = 'issue-item';
+                div.innerHTML = `<div class="issue-dot ${key === 'tooSlow' ? 'warning' : ''}"></div>${issueNames[key]}: ${count} reps`;
+                issuesContainer.appendChild(div);
+            });
+        }
+        
+        const recList = document.getElementById('recommendations-list');
+        recList.innerHTML = '';
+        
+        const recommendations = [];
+        if (session.avgRom < 60) recommendations.push(`Increase ROM target to ${Math.min(70, session.avgRom + 10)}°`);
+        if (session.avgSpeed < 2.0) recommendations.push("Maintain tempo between 2–4 seconds");
+        if (session.avgSpeed > 5.0) recommendations.push("Try to complete reps within 4 seconds");
+        if (session.issueBreakdown.hyperextension > 0) recommendations.push("Avoid locking knee fully at top");
+        if (session.issueBreakdown.jerky > 0) recommendations.push("Focus on smooth, controlled movement");
+        if (session.issueBreakdown.hipStability > 0) recommendations.push("Keep hip steady throughout rep");
+        if (recommendations.length === 0) recommendations.push("Maintain current form and increase volume");
+        
+        recommendations.forEach(rec => {
+            const li = document.createElement('li');
+            li.textContent = rec;
+            recList.appendChild(li);
+        });
+        
+        document.getElementById('report-modal').classList.add('show');
+    }
+
+    function closeReport() {
+        document.getElementById('report-modal').classList.remove('show');
+    }
+
+    function shareReport() {
+        const reportText = generateReportText();
+        navigator.clipboard.writeText(reportText).then(() => {
+            alert('Report copied to clipboard!');
+        });
+    }
+
+    function generateReportText() {
+        const valid = document.getElementById('report-valid').textContent;
+        const rate = document.getElementById('report-rate').textContent;
+        const rom = document.getElementById('report-rom').textContent;
+        const score = document.getElementById('report-score').textContent;
+        const date = new Date().toLocaleDateString();
+        
+        return `🏥 Helify Report - ${date}
+Valid Reps: ${valid} (${rate} success rate)
+Avg ROM: ${rom}
+Quality Score: ${score}/100
+
+Powered by Helify Rehab`;
     }
 
     function renderHistory() {
-        const history = JSON.parse(localStorage.getItem('helify_v1_history') || "[]");
-        document.getElementById('history-body').innerHTML = history.map(s => `
-            <tr>
-                <td>${s.date}</td>
-                <td><b>${s.reps}</b></td>
-                <td>${s.rom}</td>
-                <td>${s.speed}</td>
-            </tr>
-        `).join('');
+        const history = JSON.parse(localStorage.getItem('helify_sessions') || "[]");
+        const tbody = document.getElementById('history-body');
+        
+        if (history.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;">No sessions yet</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = history.map(s => {
+            const scoreClass = s.qualityScore > 80 ? 'score-good' : s.qualityScore > 60 ? 'score-mid' : 'score-poor';
+            return `
+                <tr>
+                    <td>${s.date}</td>
+                    <td>${s.side}</td>
+                    <td><b>${s.validReps}/${s.attemptedReps}</b></td>
+                    <td>${s.avgRom}°</td>
+                    <td>${s.bestRom}°</td>
+                    <td><span class="score-badge ${scoreClass}">${s.qualityScore}</span></td>
+                    <td>${s.warnings}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
-    const pose = new Pose({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`});
-    pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+    // ============ MEDIAPIPE SETUP ============
+    const pose = new Pose({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    });
+    
+    pose.setOptions({ 
+        modelComplexity: 1, 
+        smoothLandmarks: true, 
+        minDetectionConfidence: 0.6, 
+        minTrackingConfidence: 0.6 
+    });
     
     pose.onResults((results) => {
         canvasCtx.save();
@@ -268,35 +1029,44 @@
 
         if (results.poseLandmarks) {
             const lm = results.poseLandmarks;
-            if (lm[23].visibility > 0.7 && lm[27].visibility > 0.7) {
+            const hipIdx = state.leg === 'left' ? 23 : 24;
+            const ankleIdx = state.leg === 'left' ? 27 : 28;
+            
+            if (lm[hipIdx].visibility > 0.7 && lm[ankleIdx].visibility > 0.7) {
                 document.getElementById('warning-box').style.display = 'none';
                 
-                const isSafe = processFrame(lm);
+                const { isSafe, angle, hip, knee, ankle, smoothnessScore } = processFrame(lm);
                 
-                const h = lm[23]; // Hip
-                const k = lm[25]; // Knee
-                const a = lm[27]; // Ankle
-                
-                canvasCtx.lineWidth = 8;
-                canvasCtx.lineCap = "round";
-                canvasCtx.lineJoin = "round";
-                canvasCtx.strokeStyle = isSafe ? '#22d3ee' : '#ef4444'; 
-
-                canvasCtx.beginPath();
-                canvasCtx.moveTo(h.x * 1280, h.y * 720);
-                canvasCtx.lineTo(k.x * 1280, k.y * 720);
-                canvasCtx.lineTo(a.x * 1280, a.y * 720);
-                canvasCtx.stroke();
-
-                canvasCtx.fillStyle = '#ffffff';
-                [h, k, a].forEach(p => {
+                if (hip && knee && ankle) {
+                    canvasCtx.lineWidth = 8;
+                    canvasCtx.lineCap = "round";
+                    canvasCtx.lineJoin = "round";
+                    canvasCtx.strokeStyle = isSafe ? '#22d3ee' : '#ef4444';
+                    
                     canvasCtx.beginPath();
-                    canvasCtx.arc(p.x * 1280, p.y * 720, 8, 0, 2 * Math.PI);
-                    canvasCtx.fill();
-                });
-
+                    canvasCtx.moveTo(hip.x * 1280, hip.y * 720);
+                    canvasCtx.lineTo(knee.x * 1280, knee.y * 720);
+                    canvasCtx.lineTo(ankle.x * 1280, ankle.y * 720);
+                    canvasCtx.stroke();
+                    
+                    canvasCtx.fillStyle = '#ffffff';
+                    [hip, knee, ankle].forEach(p => {
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(p.x * 1280, p.y * 720, 8, 0, 2 * Math.PI);
+                        canvasCtx.fill();
+                    });
+                    
+                    if (state.mode === 'physio') {
+                        canvasCtx.strokeStyle = smoothnessScore > 80 ? '#22c55e' : smoothnessScore > 50 ? '#f59e0b' : '#ef4444';
+                        canvasCtx.lineWidth = 3;
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(knee.x * 1280, knee.y * 720, 30, 0, 2 * Math.PI);
+                        canvasCtx.stroke();
+                    }
+                }
             } else {
                 document.getElementById('warning-box').style.display = 'block';
+                state.trackingLostCount++;
             }
         }
         canvasCtx.restore();
@@ -307,9 +1077,8 @@
         width: 1280, height: 720
     });
     
-    renderHistory();
+    init();
     camera.start();
-
 </script>
 </body>
 </html>
