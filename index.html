@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Helify — Kinetic Rehab System</title>
     
     <!-- MediaPipe -->
@@ -38,17 +38,16 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        html, body {
+        body {
             font-family: 'Space Grotesk', sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.5;
-            touch-action: manipulation;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* Scanline Effect */
@@ -213,7 +212,7 @@
         .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
         .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
 
-        /* Calibration Overlay */
+        /* Calibration Overlay - Camera fully visible */
         .calibration-overlay {
             position: fixed;
             top: 0;
@@ -277,10 +276,12 @@
 
         .calibration-status {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
+            font-size: 13px;
             padding: 10px 16px;
             border: 1px solid var(--border);
             background: var(--bg-elevated);
+            flex: 1;
+            min-width: 120px;
         }
 
         .calibration-status.detected {
@@ -329,7 +330,7 @@
 
         .calibration-angle-display {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--text-muted);
             margin-top: 8px;
         }
@@ -342,10 +343,107 @@
             color: var(--error);
         }
 
+        /* Mirror Mode Toggle */
+        .mirror-toggle {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 150;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mirror-toggle:hover {
+            border-color: var(--accent);
+        }
+
+        .mirror-toggle.active {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .mirror-toggle-text {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+
+        .mirror-toggle.active .mirror-toggle-text {
+            color: var(--accent);
+        }
+
+        .mirror-icon {
+            width: 20px;
+            height: 20px;
+            position: relative;
+        }
+
+        .mirror-icon::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 2px solid currentColor;
+            border-radius: 2px;
+        }
+
+        .mirror-icon::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 60%;
+            background: currentColor;
+        }
+
+        /* Wrong Leg Warning */
+        .wrong-leg-warning {
+            position: fixed;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(255, 68, 68, 0.95);
+            border: 1px solid var(--error);
+            padding: 16px 24px;
+            z-index: 550;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .wrong-leg-warning.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .wrong-leg-warning-text {
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text);
+        }
+
+        .wrong-leg-warning-sub {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 6px;
+        }
+
         /* Stability Warning */
         .stability-warning {
             position: fixed;
-            top: 80px;
+            top: 100px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
             background: rgba(255, 68, 68, 0.95);
@@ -355,7 +453,7 @@
             opacity: 0;
             transition: all 0.3s;
             pointer-events: none;
-            border-radius: 4px;
+            max-width: 90%;
         }
 
         .stability-warning.visible {
@@ -369,35 +467,7 @@
             letter-spacing: 1px;
             text-transform: uppercase;
             color: var(--text);
-        }
-
-        /* Opposite Leg Warning */
-        .opposite-leg-warning {
-            position: fixed;
-            top: 140px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-100px);
-            background: rgba(255, 170, 0, 0.95);
-            border: 1px solid var(--warning);
-            padding: 12px 24px;
-            z-index: 600;
-            opacity: 0;
-            transition: all 0.3s;
-            pointer-events: none;
-            border-radius: 4px;
-        }
-
-        .opposite-leg-warning.visible {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .opposite-leg-warning-text {
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #000;
+            text-align: center;
         }
 
         /* Coaching Message - Minimal */
@@ -423,7 +493,7 @@
             font-weight: 500;
             letter-spacing: 1px;
             text-transform: uppercase;
-            padding: 12px 20px;
+            padding: 10px 20px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             position: relative;
@@ -470,8 +540,8 @@
             top: -16px;
             left: 50%;
             transform: translateX(-50%);
-            width: 50px;
-            height: 4px;
+            width: 48px;
+            height: 3px;
             background: var(--border);
             border-radius: 2px;
             cursor: pointer;
@@ -484,7 +554,7 @@
         .deck-content {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
-            gap: 16px;
+            gap: 20px;
             align-items: center;
             max-width: 1600px;
             margin: 0 auto;
@@ -508,7 +578,7 @@
             letter-spacing: 1px;
             cursor: pointer;
             transition: all 0.2s;
-            touch-action: manipulation;
+            white-space: nowrap;
         }
 
         .leg-btn:first-child {
@@ -568,7 +638,7 @@
         }
 
         .finish-btn {
-            padding: 14px 32px;
+            padding: 12px 32px;
             background: var(--accent);
             color: var(--bg);
             border: none;
@@ -581,8 +651,7 @@
             position: relative;
             overflow: hidden;
             transition: all 0.3s;
-            border-radius: 4px;
-            touch-action: manipulation;
+            white-space: nowrap;
         }
 
         .finish-btn::before {
@@ -619,7 +688,7 @@
         .toggle-btn {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             padding: 10px 16px;
             background: transparent;
             border: 1px solid var(--border);
@@ -628,8 +697,7 @@
             font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
-            touch-action: manipulation;
-            border-radius: 4px;
+            white-space: nowrap;
         }
 
         .toggle-btn:hover {
@@ -675,7 +743,8 @@
             padding: 12px 16px;
             border: 1px solid var(--border);
             min-width: 100px;
-            flex-shrink: 0;
+            flex: 1;
+            max-width: 140px;
         }
 
         .metric-minimal-label {
@@ -715,6 +784,7 @@
             opacity: 0;
             transition: opacity 0.3s;
             padding: 16px;
+            overflow-y: auto;
         }
 
         .modal-backdrop.visible {
@@ -725,18 +795,18 @@
         .modal-container {
             position: relative;
             width: 100%;
-            height: 100%;
+            max-width: 600px;
+            margin: auto;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
         }
 
         .modal-close {
             position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 44px;
-            height: 44px;
+            top: -48px;
+            right: 0;
+            width: 40px;
+            height: 40px;
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-muted);
@@ -747,7 +817,6 @@
             justify-content: center;
             transition: all 0.2s;
             z-index: 10;
-            border-radius: 4px;
         }
 
         .modal-close:hover {
@@ -759,13 +828,11 @@
         .modal {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            max-width: 500px;
             width: 100%;
-            max-height: 85vh;
+            max-height: 80vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            border-radius: 8px;
         }
 
         .modal-header {
@@ -812,7 +879,6 @@
             padding: 16px;
             border: 1px solid var(--border);
             background: var(--bg);
-            border-radius: 4px;
         }
 
         .stat-label {
@@ -837,7 +903,6 @@
             border: 1px solid var(--border);
             padding: 16px;
             margin-bottom: 20px;
-            border-radius: 4px;
         }
 
         .issues-title {
@@ -851,7 +916,7 @@
         .issue-item {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 6px 0;
             border-bottom: 1px solid var(--border);
             font-size: 13px;
         }
@@ -888,7 +953,6 @@
             font-family: inherit;
             font-size: 14px;
             transition: border-color 0.2s;
-            border-radius: 4px;
         }
 
         .input-field:focus {
@@ -914,8 +978,6 @@
             letter-spacing: 1px;
             cursor: pointer;
             transition: all 0.2s;
-            border-radius: 4px;
-            touch-action: manipulation;
         }
 
         .btn:hover {
@@ -970,7 +1032,6 @@
             max-width: 100%;
             transform: translateX(120%);
             transition: transform 0.4s;
-            border-radius: 0 4px 4px 0;
         }
 
         .toast.visible {
@@ -996,7 +1057,7 @@
         }
 
         .control-deck.expanded .rep-history-compact {
-            max-height: 200px;
+            max-height: 180px;
             margin-top: 16px;
             overflow-y: auto;
         }
@@ -1004,7 +1065,7 @@
         .rep-item-compact {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 6px 0;
             border-bottom: 1px solid var(--border);
             font-size: 11px;
             font-family: 'JetBrains Mono', monospace;
@@ -1061,161 +1122,272 @@
             user-select: auto;
         }
 
-        /* Mobile Optimizations */
-        @media (max-width: 768px) {
-            .main-stage {
-                padding: 60px 12px 160px;
-            }
-
-            .video-frame {
-                aspect-ratio: 3/4;
-                max-height: 70vh;
-            }
-
+        /* Responsive Breakpoints */
+        
+        /* Tablet */
+        @media (max-width: 1024px) {
             .deck-content {
-                grid-template-columns: 1fr;
-                gap: 12px;
+                gap: 16px;
             }
-
-            .data-toggle {
-                justify-self: center;
-                width: 100%;
-            }
-
-            .toggle-btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .leg-control {
-                justify-content: center;
-            }
-
-            .center-action {
-                order: -1;
-            }
-
-            .calibration-panel {
-                padding: 24px 20px;
-            }
-
-            .calibration-title {
-                font-size: 16px;
-            }
-
-            .calibration-timer {
-                font-size: 28px;
-            }
-
-            .metrics-row {
-                gap: 8px;
-            }
-
+            
             .metric-minimal {
+                min-width: 90px;
                 padding: 10px 12px;
-                min-width: 80px;
             }
-
+            
             .metric-minimal-value {
-                font-size: 16px;
+                font-size: 18px;
             }
 
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal {
-                max-height: 90vh;
-            }
-
-            .modal-header,
-            .modal-body,
-            .modal-footer {
-                padding: 20px;
+            .mirror-toggle {
+                top: 70px;
+                right: 16px;
+                padding: 8px 12px;
             }
         }
 
-        @media (max-width: 480px) {
-            .brand-text {
-                font-size: 14px;
+        /* Mobile Landscape */
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 16px;
             }
-
+            
             .brand-mark {
                 width: 24px;
                 height: 24px;
             }
-
-            .coaching-text {
-                font-size: 11px;
-                padding: 10px 16px;
+            
+            .brand-text {
+                font-size: 14px;
+            }
+            
+            .main-stage {
+                padding: 60px 12px 160px;
+            }
+            
+            .video-frame::before,
+            .video-frame::after {
+                width: 12px;
+                height: 12px;
+            }
+            
+            .corner {
+                width: 24px;
+                height: 24px;
+            }
+            
+            .calibration-panel {
+                padding: 24px 20px;
+            }
+            
+            .calibration-title {
+                font-size: 16px;
+            }
+            
+            .calibration-timer {
+                font-size: 28px;
             }
 
-            .finish-btn {
-                padding: 12px 24px;
-                font-size: 11px;
+            .mirror-toggle {
+                top: 60px;
+                right: 12px;
+                padding: 6px 10px;
             }
 
+            .mirror-toggle-text {
+                font-size: 9px;
+            }
+            
+            .control-deck {
+                padding: 12px;
+                transform: translateY(calc(100% - 60px));
+            }
+            
+            .deck-content {
+                gap: 12px;
+            }
+            
             .leg-btn {
-                padding: 10px 20px;
+                padding: 8px 14px;
+                font-size: 10px;
             }
-
+            
+            .finish-btn {
+                padding: 10px 24px;
+                font-size: 11px;
+            }
+            
+            .toggle-btn {
+                padding: 8px 12px;
+                font-size: 10px;
+            }
+            
+            .data-panel {
+                bottom: 60px;
+                padding: 12px;
+            }
+            
+            .metrics-row {
+                gap: 8px;
+            }
+            
+            .metric-minimal {
+                min-width: 80px;
+                padding: 10px 8px;
+            }
+            
+            .metric-minimal-value {
+                font-size: 16px;
+            }
+            
             .metric-minimal-label {
                 font-size: 8px;
             }
+            
+            .coaching-hud {
+                bottom: 20px;
+            }
+            
+            .coaching-text {
+                font-size: 11px;
+                padding: 8px 16px;
+            }
 
-            .metric-minimal-sub {
+            .wrong-leg-warning {
+                top: 120px;
+            }
+        }
+
+        /* Mobile Portrait */
+        @media (max-width: 480px) {
+            .deck-content {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                text-align: center;
+            }
+            
+            .leg-control {
+                justify-content: center;
+            }
+            
+            .data-toggle {
+                justify-self: center;
+            }
+            
+            .center-action {
+                order: -1;
+            }
+            
+            .status-display {
                 font-size: 9px;
             }
-        }
-
-        /* Tablet */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .video-frame {
-                max-width: 90vw;
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-close {
+                top: 16px;
+                right: 16px;
+                background: var(--bg-card);
+            }
+            
+            .modal-header,
+            .modal-body,
+            .modal-footer {
+                padding: 16px;
+            }
+            
+            .stat-value {
+                font-size: 24px;
+            }
+            
+            .button-row {
+                flex-direction: column;
             }
 
-            .deck-content {
-                gap: 24px;
+            .mirror-toggle {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 10px auto;
+                display: inline-flex;
             }
         }
 
-        /* Large screens */
+        /* Small Mobile */
+        @media (max-width: 360px) {
+            .calibration-feedback {
+                flex-direction: column;
+            }
+            
+            .calibration-status {
+                width: 100%;
+            }
+            
+            .metric-minimal {
+                min-width: 70px;
+                padding: 8px 6px;
+            }
+            
+            .metric-minimal-value {
+                font-size: 14px;
+            }
+        }
+
+        /* Large Screens */
         @media (min-width: 1920px) {
+            .main-stage {
+                padding: 100px 40px 220px;
+            }
+            
             .video-frame {
                 max-width: 1600px;
             }
-
+            
             .calibration-panel {
                 max-width: 500px;
                 padding: 48px;
             }
-
+            
             .calibration-title {
-                font-size: 24px;
+                font-size: 22px;
+            }
+            
+            .metric-minimal-value {
+                font-size: 28px;
             }
         }
 
-        /* Landscape mobile */
+        /* Landscape orientation adjustments */
         @media (max-height: 500px) and (orientation: landscape) {
+            .header {
+                padding: 8px 16px;
+            }
+            
             .main-stage {
-                padding: 50px 12px 140px;
+                padding: 50px 16px 140px;
             }
-
-            .video-frame {
-                aspect-ratio: 16/9;
-                max-height: 80vh;
-            }
-
+            
             .control-deck {
-                transform: translateY(calc(100% - 60px));
+                transform: translateY(calc(100% - 50px));
             }
-
-            .calibration-overlay {
-                padding: 10px;
-            }
-
+            
             .calibration-panel {
                 padding: 20px;
+                max-width: 350px;
+            }
+            
+            .calibration-title {
+                margin-bottom: 12px;
+            }
+            
+            .calibration-instruction {
+                margin-bottom: 16px;
+            }
+
+            .mirror-toggle {
+                top: 50px;
             }
         }
     </style>
@@ -1233,6 +1405,12 @@
             </div>
         </header>
 
+        <!-- Mirror Mode Toggle -->
+        <div class="mirror-toggle" id="mirror-toggle" onclick="toggleMirrorMode()">
+            <div class="mirror-icon"></div>
+            <span class="mirror-toggle-text">Mirror: OFF</span>
+        </div>
+
         <!-- Main Stage -->
         <main class="main-stage">
             <div class="video-frame" id="video-frame">
@@ -1249,13 +1427,13 @@
             </div>
         </main>
 
-        <!-- Calibration Overlay -->
+        <!-- Calibration Overlay - Camera stays visible behind -->
         <div class="calibration-overlay" id="calibration-overlay">
             <div class="calibration-panel">
                 <div class="calibration-title">Calibration</div>
                 <div class="calibration-instruction">
                     Hold your <span class="calibration-leg" id="cal-leg">LEFT</span> leg straight<br>
-                    <small style="color: var(--text-muted); font-size: 11px;">Acceptable range: 0° to 10° flexion</small>
+                    <small style="color: var(--text-muted); font-size: 12px;">Acceptable range: 0° to 10° flexion</small>
                 </div>
                 <div class="calibration-feedback">
                     <div class="calibration-status" id="cal-status">Searching...</div>
@@ -1269,14 +1447,15 @@
             </div>
         </div>
 
+        <!-- Wrong Leg Warning -->
+        <div class="wrong-leg-warning" id="wrong-leg-warning">
+            <div class="wrong-leg-warning-text">⚠ Wrong Leg Detected</div>
+            <div class="wrong-leg-warning-sub">System detected movement in <span id="detected-leg-name">OTHER</span> leg instead of selected <span id="selected-leg-name">LEFT</span> leg</div>
+        </div>
+
         <!-- Stability Warning -->
         <div class="stability-warning" id="stability-warning">
             <div class="stability-warning-text">⚠ Camera Unstable</div>
-        </div>
-
-        <!-- Opposite Leg Warning -->
-        <div class="opposite-leg-warning" id="opposite-leg-warning">
-            <div class="opposite-leg-warning-text">⚠ Keep other leg still</div>
         </div>
 
         <!-- Data Panel (Slide up) -->
@@ -1296,11 +1475,6 @@
                     <div class="metric-minimal-label">Hip Stability</div>
                     <div class="metric-minimal-value" id="metric-hip">--</div>
                     <div class="metric-minimal-sub" id="metric-hip-sub">--</div>
-                </div>
-                <div class="metric-minimal">
-                    <div class="metric-minimal-label">Opposite Leg</div>
-                    <div class="metric-minimal-value" id="metric-opposite">--</div>
-                    <div class="metric-minimal-sub" id="metric-opposite-sub">--</div>
                 </div>
                 <div class="metric-minimal">
                     <div class="metric-minimal-label">Smoothness</div>
@@ -1398,7 +1572,7 @@
                 DEEP_THRESHOLD: 70, 
                 MAX_SAFE: -5,
                 CALIBRATION_MIN: 0,    // 0 degrees (perfectly straight)
-                CALIBRATION_MAX: 10    // UPDATED: 10 degrees flexion (easier range)
+                CALIBRATION_MAX: 10    // 0-10 degrees (easier range)
             },
             SPEED: { MIN_TIME: 2.0, MAX_TIME: 6.0, OPTIMAL_MIN: 2.5, OPTIMAL_MAX: 4.0 },
             STABILITY: { 
@@ -1407,18 +1581,23 @@
                 JERK_THRESHOLD: 15,
                 CALIBRATION_DURATION: 3.0,
                 CALIBRATION_TOLERANCE: 0.05,
-                FRAME_STABILITY_THRESHOLD: 0.02,
-                OPPOSITE_LEG_THRESHOLD: 0.08  // Threshold for opposite leg movement
+                FRAME_STABILITY_THRESHOLD: 0.02
             },
             TIMEOUT: 8.0,
-            SCORING: { ROM_WEIGHT: 0.40, TEMPO_WEIGHT: 0.30, CONTROL_WEIGHT: 0.30 }
+            SCORING: { ROM_WEIGHT: 0.40, TEMPO_WEIGHT: 0.30, CONTROL_WEIGHT: 0.30 },
+            WRONG_LEG_DETECTION: {
+                MOVEMENT_THRESHOLD: 15,     // Degrees of movement to detect activity
+                CONFIRMATION_FRAMES: 8,     // Frames to confirm wrong leg movement
+                COOLDOWN_MS: 3000          // Time between warnings
+            }
         };
 
         // State
         const state = {
             leg: 'left',
+            // MediaPipe indices: 23=LEFT hip, 24=RIGHT hip, 25=LEFT knee, 26=RIGHT knee, 27=LEFT ankle, 28=RIGHT ankle
+            // These are from the camera's perspective (mirrored from user's view)
             legIndices: { hip: 23, knee: 25, ankle: 27 },
-            oppositeLegIndices: { hip: 24, knee: 26, ankle: 28 }, // NEW: Track opposite leg
             
             patientId: null,
             phase: 'STANDING',
@@ -1435,9 +1614,7 @@
                 angleHistory: [],
                 lastAngle: 180,
                 lastVelocity: 0,
-                maxJerk: 0,
-                oppositeLegMoved: false,  // NEW: Track if opposite leg moved during rep
-                oppositeLegMaxMovement: 0 // NEW: Track max movement of opposite leg
+                maxJerk: 0
             },
             
             sumRoM: 0,
@@ -1446,7 +1623,7 @@
             totalScore: 0,
             
             repLogs: [],
-            issues: { incompleteROM: 0, tooFast: 0, tooSlow: 0, hyperextension: 0, hipStability: 0, jerky: 0, oppositeLegMoved: 0 },
+            issues: { incompleteROM: 0, tooFast: 0, tooSlow: 0, hyperextension: 0, hipStability: 0, jerky: 0, wrongLeg: 0 },
 
             // Calibration state
             isCalibrating: false,
@@ -1461,9 +1638,16 @@
             cameraStable: true,
             stabilityWarnings: 0,
 
-            // Opposite leg tracking
-            oppositeLegBaseline: null,  // NEW: Store baseline position of opposite leg
-            oppositeLegHistory: []      // NEW: History for smoothing
+            // Wrong leg detection state
+            wrongLegDetection: {
+                selectedLegHistory: [],
+                otherLegHistory: [],
+                lastWarningTime: 0,
+                warningShown: false
+            },
+
+            // Mirror mode (flips left/right interpretation)
+            mirrorMode: false
         };
 
         let currentSessionData = null;
@@ -1473,6 +1657,13 @@
 
         // Init
         function init() {
+            // Check for saved mirror mode preference
+            const savedMirror = localStorage.getItem('helify_mirror');
+            if (savedMirror === 'true') {
+                state.mirrorMode = true;
+                updateMirrorToggleUI();
+            }
+
             const saved = localStorage.getItem('helify_leg');
             if (saved) {
                 setLeg(saved, false);
@@ -1483,19 +1674,42 @@
             setupMediaPipe();
         }
 
+        function toggleMirrorMode() {
+            state.mirrorMode = !state.mirrorMode;
+            localStorage.setItem('helify_mirror', state.mirrorMode);
+            updateMirrorToggleUI();
+            
+            // Re-apply leg setting with new mirror mode
+            setLeg(state.leg, false);
+            
+            showToast('Mirror Mode', state.mirrorMode ? 'ON - Left/Right swapped' : 'OFF - Standard orientation');
+        }
+
+        function updateMirrorToggleUI() {
+            const toggle = document.getElementById('mirror-toggle');
+            const text = toggle.querySelector('.mirror-toggle-text');
+            
+            if (state.mirrorMode) {
+                toggle.classList.add('active');
+                text.textContent = 'Mirror: ON';
+            } else {
+                toggle.classList.remove('active');
+                text.textContent = 'Mirror: OFF';
+            }
+        }
+
         function setLeg(leg, triggerCalibration = true) {
             state.leg = leg;
             localStorage.setItem('helify_leg', leg);
             
-            // Set active leg indices
-            state.legIndices = leg === 'left' ? 
+            // MediaPipe uses: 23=LEFT, 24=RIGHT (from camera's perspective)
+            // When mirrorMode is ON, we swap these because the camera view is mirrored
+            const isLeft = leg === 'left';
+            const useLeftIndices = state.mirrorMode ? !isLeft : isLeft;
+            
+            state.legIndices = useLeftIndices ? 
                 { hip: 23, knee: 25, ankle: 27 } : 
                 { hip: 24, knee: 26, ankle: 28 };
-            
-            // Set opposite leg indices
-            state.oppositeLegIndices = leg === 'left' ? 
-                { hip: 24, knee: 26, ankle: 28 } : 
-                { hip: 23, knee: 25, ankle: 27 };
             
             document.getElementById('btn-left').classList.toggle('active', leg === 'left');
             document.getElementById('btn-right').classList.toggle('active', leg === 'right');
@@ -1503,7 +1717,6 @@
             // Reset calibration when leg changes
             state.isCalibrated = false;
             state.patientId = null;
-            state.oppositeLegBaseline = null;
             document.getElementById('video-frame').classList.remove('has-patient');
             document.getElementById('finish-btn').disabled = true;
             
@@ -1521,7 +1734,6 @@
             state.calibrationStartTime = performance.now() / 1000;
             state.calibrationStableTime = 0;
             state.calibrationData = [];
-            state.oppositeLegBaseline = null;  // Reset opposite leg baseline
             
             document.getElementById('cal-leg').textContent = state.leg.toUpperCase();
             document.getElementById('calibration-overlay').classList.add('active');
@@ -1566,12 +1778,18 @@
             state.bestROM = 0;
             state.totalScore = 0;
             state.repLogs = [];
-            state.issues = { incompleteROM: 0, tooFast: 0, tooSlow: 0, hyperextension: 0, hipStability: 0, jerky: 0, oppositeLegMoved: 0 };
-            state.oppositeLegBaseline = null;
+            state.issues = { incompleteROM: 0, tooFast: 0, tooSlow: 0, hyperextension: 0, hipStability: 0, jerky: 0, wrongLeg: 0 };
+            state.wrongLegDetection = {
+                selectedLegHistory: [],
+                otherLegHistory: [],
+                lastWarningTime: 0,
+                warningShown: false
+            };
             
             resetRepData();
             updateMetrics();
             renderRepHistory();
+            hideWrongLegWarning();
         }
 
         function resetRepData() {
@@ -1584,9 +1802,7 @@
                 angleHistory: [],
                 lastAngle: 180,
                 lastVelocity: 0,
-                maxJerk: 0,
-                oppositeLegMoved: false,
-                oppositeLegMaxMovement: 0
+                maxJerk: 0
             };
         }
 
@@ -1638,6 +1854,13 @@
 
             ctx.save();
             ctx.clearRect(0, 0, 1280, 720);
+            
+            // Apply mirror transform if needed
+            if (state.mirrorMode) {
+                ctx.translate(1280, 0);
+                ctx.scale(-1, 1);
+            }
+            
             ctx.drawImage(results.image, 0, 0, 1280, 720);
 
             // Check camera stability
@@ -1645,21 +1868,19 @@
 
             if (results.poseLandmarks) {
                 const idx = state.legIndices;
-                const oppositeIdx = state.oppositeLegIndices;
-                
                 const hip = results.poseLandmarks[idx.hip];
                 const knee = results.poseLandmarks[idx.knee];
                 const ankle = results.poseLandmarks[idx.ankle];
-                
-                // Get opposite leg landmarks
-                const oppHip = results.poseLandmarks[oppositeIdx.hip];
-                const oppKnee = results.poseLandmarks[oppositeIdx.knee];
-                const oppAnkle = results.poseLandmarks[oppositeIdx.ankle];
+
+                // Check for wrong leg detection during exercise
+                if (state.isCalibrated && !state.isCalibrating) {
+                    checkWrongLeg(results.poseLandmarks);
+                }
 
                 // Calibration mode
                 if (state.isCalibrating) {
-                    processCalibrationFrame(results.poseLandmarks, hip, knee, ankle, oppHip, oppKnee, oppAnkle);
-                    drawCalibrationSkeleton(ctx, results.poseLandmarks, hip, knee, ankle, oppHip, oppKnee, oppAnkle);
+                    processCalibrationFrame(results.poseLandmarks, hip, knee, ankle);
+                    drawCalibrationSkeleton(ctx, results.poseLandmarks, hip, knee, ankle);
                 } 
                 // Exercise mode (only after calibration)
                 else if (state.isCalibrated) {
@@ -1672,6 +1893,101 @@
             }
 
             ctx.restore();
+        }
+
+        // Wrong Leg Detection - Compares movement between selected leg and other leg
+        function checkWrongLeg(landmarks) {
+            const now = performance.now();
+            const det = state.wrongLegDetection;
+            
+            // Cooldown check
+            if (now - det.lastWarningTime < CONFIG.WRONG_LEG_DETECTION.COOLDOWN_MS) {
+                return;
+            }
+
+            // Get selected leg landmarks
+            const selIdx = state.legIndices;
+            const selHip = landmarks[selIdx.hip];
+            const selKnee = landmarks[selIdx.knee];
+            const selAnkle = landmarks[selIdx.ankle];
+
+            // Get other leg landmarks (opposite indices)
+            const otherIdx = selIdx.hip === 23 ? 
+                { hip: 24, knee: 26, ankle: 28 } : 
+                { hip: 23, knee: 25, ankle: 27 };
+            const othHip = landmarks[otherIdx.hip];
+            const othKnee = landmarks[otherIdx.knee];
+            const othAnkle = landmarks[otherIdx.ankle];
+
+            // Need both legs visible
+            if (!selHip || !selKnee || !selAnkle || !othHip || !othKnee || !othAnkle ||
+                selHip.visibility < 0.5 || selKnee.visibility < 0.5 || selAnkle.visibility < 0.5 ||
+                othHip.visibility < 0.5 || othKnee.visibility < 0.5 || othAnkle.visibility < 0.5) {
+                return;
+            }
+
+            // Calculate angles for both legs
+            const selGeoAngle = calculateAngle(selHip, selKnee, selAnkle);
+            const selAnaAngle = 180 - selGeoAngle;
+            
+            const othGeoAngle = calculateAngle(othHip, othKnee, othAnkle);
+            const othAnaAngle = 180 - othGeoAngle;
+
+            // Track history
+            det.selectedLegHistory.push({ angle: selAnaAngle, time: now });
+            det.otherLegHistory.push({ angle: othAnaAngle, time: now });
+
+            // Keep only recent history (last 500ms)
+            det.selectedLegHistory = det.selectedLegHistory.filter(h => now - h.time < 500);
+            det.otherLegHistory = det.otherLegHistory.filter(h => now - h.time < 500);
+
+            // Need enough data
+            if (det.selectedLegHistory.length < CONFIG.WRONG_LEG_DETECTION.CONFIRMATION_FRAMES ||
+                det.otherLegHistory.length < CONFIG.WRONG_LEG_DETECTION.CONFIRMATION_FRAMES) {
+                return;
+            }
+
+            // Calculate movement ranges
+            const selMin = Math.min(...det.selectedLegHistory.map(h => h.angle));
+            const selMax = Math.max(...det.selectedLegHistory.map(h => h.angle));
+            const selRange = selMax - selMin;
+
+            const othMin = Math.min(...det.otherLegHistory.map(h => h.angle));
+            const othMax = Math.max(...det.otherLegHistory.map(h => h.angle));
+            const othRange = othMax - othMin;
+
+            // Wrong leg detected if:
+            // 1. Other leg is moving significantly (bending)
+            // 2. Selected leg is relatively straight (not moving much)
+            const otherLegMoving = othRange > CONFIG.WRONG_LEG_DETECTION.MOVEMENT_THRESHOLD;
+            const selectedLegStatic = selRange < CONFIG.WRONG_LEG_DETECTION.MOVEMENT_THRESHOLD / 2;
+
+            if (otherLegMoving && selectedLegStatic) {
+                showWrongLegWarning();
+                det.lastWarningTime = now;
+                state.issues.wrongLeg++;
+            } else {
+                hideWrongLegWarning();
+            }
+        }
+
+        function showWrongLegWarning() {
+            const warning = document.getElementById('wrong-leg-warning');
+            const detectedLeg = state.leg === 'left' ? 'RIGHT' : 'LEFT';
+            
+            document.getElementById('detected-leg-name').textContent = detectedLeg;
+            document.getElementById('selected-leg-name').textContent = state.leg.toUpperCase();
+            
+            warning.classList.add('visible');
+            state.wrongLegDetection.warningShown = true;
+            
+            showToast('Wrong Leg Detected', `Please use your ${state.leg.toUpperCase()} leg`);
+        }
+
+        function hideWrongLegWarning() {
+            const warning = document.getElementById('wrong-leg-warning');
+            warning.classList.remove('visible');
+            state.wrongLegDetection.warningShown = false;
         }
 
         // Camera Stability Check
@@ -1719,58 +2035,11 @@
             }, 3000);
         }
 
-        // Opposite Leg Movement Detection
-        function checkOppositeLegMovement(oppHip, oppKnee, oppAnkle) {
-            if (!oppHip || !oppKnee || !oppAnkle) return { moved: false, movement: 0 };
-
-            // Calculate current position (average of hip, knee, ankle)
-            const currentPos = {
-                x: (oppHip.x + oppKnee.x + oppAnkle.x) / 3,
-                y: (oppHip.y + oppKnee.y + oppAnkle.y) / 3
-            };
-
-            // If no baseline yet, set it
-            if (!state.oppositeLegBaseline) {
-                state.oppositeLegBaseline = currentPos;
-                return { moved: false, movement: 0 };
-            }
-
-            // Calculate movement distance
-            const movement = Math.sqrt(
-                Math.pow(currentPos.x - state.oppositeLegBaseline.x, 2) +
-                Math.pow(currentPos.y - state.oppositeLegBaseline.y, 2)
-            );
-
-            // Update history for smoothing
-            state.oppositeLegHistory.push(movement);
-            if (state.oppositeLegHistory.length > 5) {
-                state.oppositeLegHistory.shift();
-            }
-
-            // Use average of recent movements
-            const avgMovement = state.oppositeLegHistory.reduce((a, b) => a + b, 0) / state.oppositeLegHistory.length;
-            
-            return {
-                moved: avgMovement > CONFIG.STABILITY.OPPOSITE_LEG_THRESHOLD,
-                movement: avgMovement
-            };
-        }
-
-        function showOppositeLegWarning() {
-            const warning = document.getElementById('opposite-leg-warning');
-            warning.classList.add('visible');
-            
-            setTimeout(() => {
-                warning.classList.remove('visible');
-            }, 2000);
-        }
-
         // Calibration Logic
-        function processCalibrationFrame(landmarks, hip, knee, ankle, oppHip, oppKnee, oppAnkle) {
+        function processCalibrationFrame(landmarks, hip, knee, ankle) {
             const now = performance.now() / 1000;
             const elapsed = now - state.calibrationStartTime;
 
-            // Check if active leg is detected
             if (!hip || !knee || !ankle || hip.visibility < 0.5 || knee.visibility < 0.5 || ankle.visibility < 0.5) {
                 document.getElementById('cal-status').textContent = 'Leg not visible';
                 document.getElementById('cal-status').className = 'calibration-status error';
@@ -1783,24 +2052,12 @@
                 return;
             }
 
-            // Check opposite leg is also visible (for baseline)
-            if (oppHip && oppKnee && oppAnkle && oppHip.visibility > 0.5) {
-                // Set baseline for opposite leg during calibration
-                state.oppositeLegBaseline = {
-                    x: (oppHip.x + oppKnee.x + oppAnkle.x) / 3,
-                    y: (oppHip.y + oppKnee.y + oppAnkle.y) / 3
-                };
-            }
-
-            // Calculate angle
             const geoAngle = calculateAngle(hip, knee, ankle);
-            const anaAngle = 180 - geoAngle; // This is flexion angle (0 = straight, higher = bent)
+            const anaAngle = 180 - geoAngle;
 
-            // Update angle display
             const angleDisplay = document.getElementById('cal-angle-display');
             angleDisplay.textContent = `Current: ${Math.round(anaAngle)}° flexion`;
             
-            // UPDATED: Check if leg is straight within 0-10 degrees range (was 0-5)
             const isStraight = anaAngle >= CONFIG.ROM.CALIBRATION_MIN && anaAngle <= CONFIG.ROM.CALIBRATION_MAX;
             
             if (isStraight) {
@@ -1809,11 +2066,10 @@
                 angleDisplay.className = 'calibration-angle-display bad';
             }
             
-            // Check stability
             const isStable = checkCalibrationStability(hip, knee, ankle);
 
             if (isStraight && isStable) {
-                state.calibrationStableTime += 0.033; // Approx 30fps
+                state.calibrationStableTime += 0.033;
                 const progress = Math.min(100, (state.calibrationStableTime / CONFIG.STABILITY.CALIBRATION_DURATION) * 100);
                 
                 document.getElementById('cal-status').textContent = 'Position Good ✓';
@@ -1847,7 +2103,6 @@
                 }
             }
 
-            // Timeout after 30 seconds
             if (elapsed > 30) {
                 cancelCalibration('Timeout - Please try again');
             }
@@ -1868,6 +2123,7 @@
                                 calculateVariance(state.calibrationData.map(d => d.knee.y));
             
             const totalVariance = hipVariance + kneeVariance;
+            
             return totalVariance < CONFIG.STABILITY.CALIBRATION_TOLERANCE;
         }
 
@@ -1881,22 +2137,7 @@
             document.getElementById('cal-timer').textContent = remaining.toFixed(1);
         }
 
-        function drawCalibrationSkeleton(ctx, landmarks, hip, knee, ankle, oppHip, oppKnee, oppAnkle) {
-            const idx = state.legIndices;
-            
-            // Draw opposite leg faintly
-            if (oppHip && oppKnee && oppAnkle) {
-                ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
-                ctx.lineWidth = 3;
-                ctx.lineCap = 'round';
-                ctx.beginPath();
-                ctx.moveTo(oppHip.x * 1280, oppHip.y * 720);
-                ctx.lineTo(oppKnee.x * 1280, oppKnee.y * 720);
-                ctx.lineTo(oppAnkle.x * 1280, oppAnkle.y * 720);
-                ctx.stroke();
-            }
-            
-            // Draw selected leg prominently
+        function drawCalibrationSkeleton(ctx, landmarks, hip, knee, ankle) {
             const isGood = document.getElementById('cal-status').classList.contains('detected');
             ctx.strokeStyle = isGood ? '#00ff9d' : '#ffaa00';
             ctx.lineWidth = 6;
@@ -1908,7 +2149,6 @@
             ctx.lineTo(ankle.x * 1280, ankle.y * 720);
             ctx.stroke();
 
-            // Joints
             ctx.fillStyle = isGood ? '#00ff9d' : '#ffaa00';
             [hip, knee, ankle].forEach(point => {
                 ctx.beginPath();
@@ -1916,7 +2156,6 @@
                 ctx.fill();
             });
 
-            // Angle indicator
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 24px "JetBrains Mono"';
             const geoAngle = calculateAngle(hip, knee, ankle);
@@ -1928,20 +2167,13 @@
         function processExerciseFrame(landmarks) {
             const now = performance.now() / 1000;
             const idx = state.legIndices;
-            const oppositeIdx = state.oppositeLegIndices;
 
             if (checkTimeout(now)) return;
 
             const hip = landmarks[idx.hip];
             const knee = landmarks[idx.knee];
             const ankle = landmarks[idx.ankle];
-            
-            // Get opposite leg landmarks
-            const oppHip = landmarks[oppositeIdx.hip];
-            const oppKnee = landmarks[oppositeIdx.knee];
-            const oppAnkle = landmarks[oppositeIdx.ankle];
 
-            // Check if tracking is lost
             if (!hip || !knee || !ankle || hip.visibility < 0.5) {
                 showCoaching("Leg not visible", "warning");
                 return;
@@ -1953,30 +2185,13 @@
             updateSmoothness(geoAngle);
             const smoothScore = getSmoothness();
 
-            // Check opposite leg movement
-            const oppositeLegCheck = checkOppositeLegMovement(oppHip, oppKnee, oppAnkle);
-            
-            // Update hidden metrics
-            updateHiddenMetrics(anaAngle, smoothScore, oppositeLegCheck);
+            updateHiddenMetrics(anaAngle, smoothScore);
 
-            // Track opposite leg movement during rep
-            if (state.phase !== 'STANDING') {
-                if (oppositeLegCheck.moved) {
-                    state.currentRep.oppositeLegMoved = true;
-                    showOppositeLegWarning();
-                }
-                if (oppositeLegCheck.movement > state.currentRep.oppositeLegMaxMovement) {
-                    state.currentRep.oppositeLegMaxMovement = oppositeLegCheck.movement;
-                }
-            }
-
-            // Safety
             if (anaAngle < CONFIG.ROM.MAX_SAFE) {
                 state.currentRep.hyperextended = true;
                 showCoaching("Don't lock knee", "error");
             }
 
-            // Phase detection
             if (state.phase === 'STANDING' && anaAngle > CONFIG.ROM.STAND_THRESHOLD) {
                 startRep(now, anaAngle, hip.y);
             } else if (state.phase !== 'STANDING') {
@@ -2023,9 +2238,6 @@
             state.currentRep.maxFlexion = angle;
             state.currentRep.startHipY = hipY;
             
-            // Reset opposite leg history for this rep
-            state.oppositeLegHistory = [];
-            
             showCoaching("Lower slowly", "neutral");
         }
 
@@ -2044,7 +2256,6 @@
                 showCoaching("Extend up", "neutral");
             }
 
-            // Update timer
             const elapsed = (performance.now() / 1000) - state.repStartTime;
             document.getElementById('metric-timer').textContent = elapsed.toFixed(1) + 's';
         }
@@ -2093,15 +2304,14 @@
                 tooSlow: duration > CONFIG.SPEED.MAX_TIME,
                 hyperextension: r.hyperextended,
                 hipStability: !hipStable,
-                jerky: jerky,
-                oppositeLegMoved: r.oppositeLegMoved
+                jerky: jerky
             };
 
-            const isValid = !issues.incompleteROM && !issues.tooFast && !issues.tooSlow && !issues.oppositeLegMoved;
+            const isValid = !issues.incompleteROM && !issues.tooFast && !issues.tooSlow;
 
             Object.entries(issues).forEach(([k, v]) => { if (v) state.issues[k]++; });
 
-            const score = calculateScore(duration, rom, smoothScore, hipStable, r.hyperextended, r.oppositeLegMoved);
+            const score = calculateScore(duration, rom, smoothScore, hipStable, r.hyperextended);
 
             if (isValid) {
                 state.validReps++;
@@ -2125,28 +2335,23 @@
             updateMetrics();
         }
 
-        function calculateScore(duration, rom, smooth, hipStable, hyper, oppositeLegMoved) {
+        function calculateScore(duration, rom, smooth, hipStable, hyper) {
             let s = 0;
-            s += Math.min(100, rom / 70 * 100) * 0.35; // ROM weight slightly reduced
+            s += Math.min(100, rom / 70 * 100) * 0.4;
             
             let tempo = duration >= 2.5 && duration <= 4 ? 100 : 
                        duration >= 2 && duration <= 6 ? 70 : 40;
-            s += tempo * 0.25; // Tempo weight
+            s += tempo * 0.3;
             
             let ctrl = smooth;
             if (!hipStable) ctrl *= 0.7;
             if (hyper) ctrl *= 0.5;
-            if (oppositeLegMoved) ctrl *= 0.6; // Penalty for opposite leg movement
-            s += ctrl * 0.25; // Control weight
+            s += ctrl * 0.3;
             
-            // Bonus for keeping opposite leg still
-            if (!oppositeLegMoved) s += 15;
-            
-            return Math.round(Math.min(100, s));
+            return Math.round(s);
         }
 
         function getIssueText(issues) {
-            if (issues.oppositeLegMoved) return "Keep other leg still";
             if (issues.incompleteROM) return "Bend more";
             if (issues.tooFast) return "Slow down";
             if (issues.tooSlow) return "Speed up";
@@ -2157,7 +2362,7 @@
         }
 
         // UI Updates
-        function updateHiddenMetrics(angle, smooth, oppositeLegCheck) {
+        function updateHiddenMetrics(angle, smooth) {
             document.getElementById('metric-angle').textContent = Math.round(angle) + '°';
             document.getElementById('metric-angle').className = 'metric-minimal-value ' + 
                 (angle < CONFIG.ROM.MAX_SAFE ? 'error' : '');
@@ -2174,15 +2379,6 @@
             document.getElementById('metric-hip').className = 'metric-minimal-value ' +
                 (hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? '' : 'warning');
             document.getElementById('metric-hip-sub').textContent = (hipVar * 100).toFixed(1) + '% var';
-
-            // Update opposite leg metric
-                        // Update opposite leg metric
-            const oppStatus = oppositeLegCheck.moved ? 'Moving' : 'Still';
-            document.getElementById('metric-opposite').textContent = oppStatus;
-            document.getElementById('metric-opposite').className = 'metric-minimal-value ' +
-                (oppositeLegCheck.moved ? 'warning' : 'accent');
-            document.getElementById('metric-opposite-sub').textContent = 
-                (oppositeLegCheck.movement * 100).toFixed(1) + '%';
         }
 
         function updateQualityDisplay(score) {
@@ -2250,36 +2446,10 @@
         // Drawing
         function drawSkeleton(ctx, landmarks) {
             const idx = state.legIndices;
-            const oppositeIdx = state.oppositeLegIndices;
             const color = state.phase === 'STANDING' ? '#00ff9d' : '#ffaa00';
 
-            // Draw opposite leg faintly
-            const oppHip = landmarks[oppositeIdx.hip];
-            const oppKnee = landmarks[oppositeIdx.knee];
-            const oppAnkle = landmarks[oppositeIdx.ankle];
-            
-            if (oppHip && oppKnee && oppAnkle) {
-                ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
-                ctx.lineWidth = 3;
-                ctx.lineCap = 'round';
-                ctx.beginPath();
-                ctx.moveTo(oppHip.x * 1280, oppHip.y * 720);
-                ctx.lineTo(oppKnee.x * 1280, oppKnee.y * 720);
-                ctx.lineTo(oppAnkle.x * 1280, oppAnkle.y * 720);
-                ctx.stroke();
-                
-                // Draw joints for opposite leg
-                ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
-                [oppHip, oppKnee, oppAnkle].forEach(point => {
-                    ctx.beginPath();
-                    ctx.arc(point.x * 1280, point.y * 720, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-
-            // Draw active leg prominently
             ctx.strokeStyle = color;
-            ctx.lineWidth = 5;
+            ctx.lineWidth = 4;
             ctx.lineCap = 'round';
 
             ctx.beginPath();
@@ -2288,7 +2458,6 @@
             ctx.lineTo(landmarks[idx.ankle].x * 1280, landmarks[idx.ankle].y * 720);
             ctx.stroke();
 
-            // Joints
             ctx.fillStyle = color;
             [idx.hip, idx.knee, idx.ankle].forEach(i => {
                 ctx.beginPath();
@@ -2296,13 +2465,12 @@
                 ctx.fill();
             });
 
-            // Selection indicator
             if (landmarks[idx.knee]) {
                 ctx.strokeStyle = '#00ff9d';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.beginPath();
-                ctx.arc(landmarks[idx.knee].x * 1280, landmarks[idx.knee].y * 720, 35, 0, Math.PI * 2);
+                ctx.arc(landmarks[idx.knee].x * 1280, landmarks[idx.knee].y * 720, 40, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
@@ -2334,7 +2502,6 @@
                 stabilityWarnings: state.stabilityWarnings
             };
 
-            // Save
             let history = JSON.parse(localStorage.getItem('helify_sessions') || '[]');
             history.unshift(currentSessionData);
             localStorage.setItem('helify_sessions', JSON.stringify(history.slice(0, 10)));
@@ -2342,7 +2509,6 @@
             showModal(currentSessionData);
             resetSession();
             
-            // Reset calibration state
             state.isCalibrated = false;
             state.patientId = null;
             document.getElementById('video-frame').classList.remove('has-patient');
@@ -2361,6 +2527,14 @@
                 stabilityText = `<div class="issue-item" style="color: var(--warning)">
                     <span>Camera Warnings</span>
                     <span>${data.stabilityWarnings}</span>
+                </div>`;
+            }
+
+            let wrongLegText = '';
+            if (data.issues.wrongLeg > 0) {
+                wrongLegText = `<div class="issue-item" style="color: var(--error)">
+                    <span>Wrong Leg Detection</span>
+                    <span>${data.issues.wrongLeg} times</span>
                 </div>`;
             }
 
@@ -2393,6 +2567,7 @@
                         </div>
                     `).join('') || '<div style="color: var(--accent)">No major issues</div>'}
                     ${stabilityText}
+                    ${wrongLegText}
                 </div>
             `;
 
@@ -2419,7 +2594,6 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // Header bar
             doc.setFillColor(0, 255, 157);
             doc.rect(0, 0, 210, 35, 'F');
             
@@ -2431,7 +2605,6 @@
             doc.setFontSize(10);
             doc.text(data.date, 150, 15);
 
-            // Content
             doc.setTextColor(80, 80, 80);
             doc.setFontSize(14);
             doc.text('SESSION REPORT', 20, 50);
@@ -2462,7 +2635,13 @@
                 doc.setTextColor(80, 80, 80);
             }
 
-            // Footer
+            if (data.issues.wrongLeg > 0) {
+                y += 5;
+                doc.setTextColor(255, 68, 68);
+                add('Wrong Leg Alerts', `${data.issues.wrongLeg}`);
+                doc.setTextColor(80, 80, 80);
+            }
+
             doc.setFillColor(5, 5, 5);
             doc.rect(0, 280, 210, 17, 'F');
             doc.setTextColor(255, 255, 255);
