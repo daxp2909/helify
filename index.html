@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Helify — Kinetic Rehab System</title>
     
     <!-- MediaPipe -->
@@ -27,20 +27,23 @@
             --border-hover: #333333;
             --text: #e5e5e5;
             --text-muted: #666666;
-            --accent: #00ff9d;
+            --accent: #00ff9d;        /* Green - Success/Good */
             --accent-dim: rgba(0, 255, 157, 0.1);
-            --warning: #ffaa00;
-            --error: #ff4444;
-            --info: #00ccff;
+            --info: #00ccff;          /* Blue - Normal/Info/Detection */
+            --info-dim: rgba(0, 204, 255, 0.1);
+            --warning: #ffcc00;       /* Yellow - Warning/Error */
+            --warning-dim: rgba(255, 204, 0, 0.1);
+            --error: #ff4444;         /* Red - Critical (kept for hyperextension) */
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        body {
+        html, body {
             font-family: 'Space Grotesk', sans-serif;
             background: var(--bg);
             color: var(--text);
@@ -48,6 +51,7 @@
             overflow-x: hidden;
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
         }
 
         /* Scanline Effect */
@@ -86,6 +90,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
 
         /* Header - Minimal */
@@ -95,7 +100,7 @@
             left: 0;
             right: 0;
             z-index: 100;
-            padding: 16px 20px;
+            padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -110,12 +115,12 @@
         .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .brand-mark {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             border: 2px solid var(--accent);
             position: relative;
             transform: rotate(45deg);
@@ -130,7 +135,7 @@
         }
 
         .brand-text {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -147,27 +152,29 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 70px 16px 180px;
+            padding: 60px 8px 140px;
             min-height: 100vh;
+            width: 100%;
         }
 
         .video-frame {
             position: relative;
             width: 100%;
-            max-width: 1400px;
-            aspect-ratio: 16/9;
+            max-width: 100%;
             background: var(--bg-elevated);
             border: 1px solid var(--border);
+            overflow: hidden;
         }
 
         .video-frame::before,
         .video-frame::after {
             content: '';
             position: absolute;
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             border: 2px solid var(--accent);
             opacity: 0.5;
+            z-index: 10;
         }
 
         .video-frame::before {
@@ -191,17 +198,19 @@
         #output_canvas {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            display: block;
         }
 
         /* Corner Markers */
         .corner {
             position: absolute;
-            width: 32px;
-            height: 32px;
+            width: 24px;
+            height: 24px;
             border: 2px solid var(--accent);
             opacity: 0;
             transition: opacity 0.3s;
+            z-index: 10;
         }
 
         .video-frame:hover .corner,
@@ -212,7 +221,7 @@
         .corner.tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
         .corner.bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
 
-        /* Calibration Overlay - Camera fully visible */
+        /* Calibration Overlay */
         .calibration-overlay {
             position: fixed;
             top: 0;
@@ -225,7 +234,8 @@
             align-items: center;
             justify-content: center;
             pointer-events: none;
-            padding: 20px;
+            padding: 16px;
+            background: rgba(5, 5, 5, 0.7);
         }
 
         .calibration-overlay.active {
@@ -233,35 +243,35 @@
         }
 
         .calibration-panel {
-            background: rgba(5, 5, 5, 0.9);
+            background: rgba(5, 5, 5, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid var(--accent);
-            padding: 32px 24px;
+            border: 1px solid var(--info);
+            padding: 24px 20px;
             text-align: center;
             pointer-events: auto;
             position: relative;
             width: 100%;
-            max-width: 400px;
+            max-width: 360px;
         }
 
         .calibration-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             letter-spacing: 3px;
             text-transform: uppercase;
-            margin-bottom: 16px;
-            color: var(--accent);
+            margin-bottom: 12px;
+            color: var(--info);
         }
 
         .calibration-instruction {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text);
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             line-height: 1.6;
         }
 
         .calibration-leg {
-            color: var(--accent);
+            color: var(--info);
             font-weight: 700;
         }
 
@@ -269,19 +279,19 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            margin-bottom: 16px;
+            gap: 12px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
         }
 
         .calibration-status {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            padding: 10px 16px;
+            font-size: 12px;
+            padding: 8px 12px;
             border: 1px solid var(--border);
             background: var(--bg-elevated);
             flex: 1;
-            min-width: 120px;
+            min-width: 100px;
         }
 
         .calibration-status.detected {
@@ -291,25 +301,25 @@
         }
 
         .calibration-status.error {
-            border-color: var(--error);
-            color: var(--error);
-            background: rgba(255, 68, 68, 0.1);
+            border-color: var(--warning);
+            color: var(--warning);
+            background: var(--warning-dim);
         }
 
         .calibration-timer {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 700;
-            color: var(--accent);
-            min-width: 60px;
+            color: var(--info);
+            min-width: 50px;
         }
 
         .calibration-progress {
             width: 100%;
-            max-width: 280px;
-            height: 4px;
+            max-width: 260px;
+            height: 3px;
             background: var(--border);
-            margin: 16px auto 0;
+            margin: 12px auto 0;
             position: relative;
             overflow: hidden;
         }
@@ -322,17 +332,17 @@
         }
 
         .calibration-hint {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-muted);
-            margin-top: 16px;
+            margin-top: 12px;
             font-family: 'JetBrains Mono', monospace;
         }
 
         .calibration-angle-display {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-muted);
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
         .calibration-angle-display.good {
@@ -340,85 +350,25 @@
         }
 
         .calibration-angle-display.bad {
-            color: var(--error);
-        }
-
-        /* Mirror Mode Toggle */
-        .mirror-toggle {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 150;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            padding: 10px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mirror-toggle:hover {
-            border-color: var(--accent);
-        }
-
-        .mirror-toggle.active {
-            border-color: var(--accent);
-            background: var(--accent-dim);
-        }
-
-        .mirror-toggle-text {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-        }
-
-        .mirror-toggle.active .mirror-toggle-text {
-            color: var(--accent);
-        }
-
-        .mirror-icon {
-            width: 20px;
-            height: 20px;
-            position: relative;
-        }
-
-        .mirror-icon::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border: 2px solid currentColor;
-            border-radius: 2px;
-        }
-
-        .mirror-icon::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 2px;
-            height: 60%;
-            background: currentColor;
+            color: var(--warning);
         }
 
         /* Wrong Leg Warning */
         .wrong-leg-warning {
             position: fixed;
-            top: 140px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
-            background: rgba(255, 68, 68, 0.95);
-            border: 1px solid var(--error);
-            padding: 16px 24px;
+            background: var(--warning-dim);
+            border: 1px solid var(--warning);
+            padding: 12px 20px;
             z-index: 550;
             opacity: 0;
             transition: all 0.3s;
             pointer-events: none;
             max-width: 90%;
             text-align: center;
+            backdrop-filter: blur(10px);
         }
 
         .wrong-leg-warning.visible {
@@ -427,33 +377,34 @@
         }
 
         .wrong-leg-warning-text {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: var(--text);
+            color: var(--warning);
         }
 
         .wrong-leg-warning-sub {
-            font-size: 12px;
-            color: rgba(255,255,255,0.8);
-            margin-top: 6px;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
         }
 
         /* Stability Warning */
         .stability-warning {
             position: fixed;
-            top: 100px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%) translateY(-100px);
-            background: rgba(255, 68, 68, 0.95);
-            border: 1px solid var(--error);
-            padding: 12px 24px;
+            background: var(--warning-dim);
+            border: 1px solid var(--warning);
+            padding: 10px 20px;
             z-index: 600;
             opacity: 0;
             transition: all 0.3s;
             pointer-events: none;
             max-width: 90%;
+            backdrop-filter: blur(10px);
         }
 
         .stability-warning.visible {
@@ -462,25 +413,26 @@
         }
 
         .stability-warning-text {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: var(--text);
+            color: var(--warning);
             text-align: center;
         }
 
-        /* Coaching Message - Minimal */
+        /* Coaching HUD */
         .coaching-hud {
             position: absolute;
-            bottom: 30px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(20px);
             opacity: 0;
             transition: all 0.4s;
             text-align: center;
             width: 90%;
-            max-width: 400px;
+            max-width: 320px;
+            z-index: 50;
         }
 
         .coaching-hud.visible {
@@ -489,22 +441,24 @@
         }
 
         .coaching-text {
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
             letter-spacing: 1px;
             text-transform: uppercase;
-            padding: 10px 20px;
+            padding: 10px 18px;
             background: var(--bg-card);
-            border: 1px solid var(--border);
+            border: 1px solid var(--info);
+            color: var(--info);
             position: relative;
             display: inline-block;
+            border-radius: 4px;
         }
 
         .coaching-text::before {
             content: '◀';
             position: absolute;
-            left: -24px;
-            color: var(--accent);
+            left: -20px;
+            color: var(--info);
             opacity: 0;
             transition: opacity 0.3s;
         }
@@ -513,9 +467,19 @@
             opacity: 1;
         }
 
-        .coaching-text.success { color: var(--accent); border-color: var(--accent); }
-        .coaching-text.warning { color: var(--warning); border-color: var(--warning); }
-        .coaching-text.error { color: var(--error); border-color: var(--error); }
+        .coaching-text.success { 
+            color: var(--accent); 
+            border-color: var(--accent); 
+            background: var(--accent-dim);
+        }
+        .coaching-text.success::before { color: var(--accent); }
+
+        .coaching-text.warning { 
+            color: var(--warning); 
+            border-color: var(--warning);
+            background: var(--warning-dim);
+        }
+        .coaching-text.warning::before { color: var(--warning); }
 
         /* Bottom Control Deck */
         .control-deck {
@@ -525,9 +489,9 @@
             right: 0;
             background: var(--bg-card);
             border-top: 1px solid var(--border);
-            padding: 16px;
+            padding: 12px;
             z-index: 100;
-            transform: translateY(calc(100% - 70px));
+            transform: translateY(calc(100% - 60px));
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -537,10 +501,10 @@
 
         .deck-handle {
             position: absolute;
-            top: -16px;
+            top: -12px;
             left: 50%;
             transform: translateX(-50%);
-            width: 48px;
+            width: 40px;
             height: 3px;
             background: var(--border);
             border-radius: 2px;
@@ -554,7 +518,7 @@
         .deck-content {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
-            gap: 20px;
+            gap: 12px;
             align-items: center;
             max-width: 1600px;
             margin: 0 auto;
@@ -567,12 +531,12 @@
         }
 
         .leg-btn {
-            padding: 10px 18px;
+            padding: 8px 14px;
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-muted);
             font-family: inherit;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -596,9 +560,9 @@
         }
 
         .leg-btn.active {
-            background: var(--accent-dim);
-            color: var(--accent);
-            border-color: var(--accent);
+            background: var(--info-dim);
+            color: var(--info);
+            border-color: var(--info);
         }
 
         .leg-btn:disabled {
@@ -611,12 +575,12 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .status-display {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -638,12 +602,12 @@
         }
 
         .finish-btn {
-            padding: 12px 32px;
+            padding: 10px 24px;
             background: var(--accent);
             color: var(--bg);
             border: none;
             font-family: inherit;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -652,6 +616,7 @@
             overflow: hidden;
             transition: all 0.3s;
             white-space: nowrap;
+            border-radius: 4px;
         }
 
         .finish-btn::before {
@@ -689,15 +654,16 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 10px 16px;
+            padding: 8px 14px;
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-muted);
             font-family: inherit;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
             transition: all 0.2s;
             white-space: nowrap;
+            border-radius: 4px;
         }
 
         .toggle-btn:hover {
@@ -708,21 +674,23 @@
         .toggle-btn.active {
             background: var(--bg-elevated);
             color: var(--text);
+            border-color: var(--info);
         }
 
-        /* Data Panel (Slide up) */
+        /* Data Panel */
         .data-panel {
             position: fixed;
-            bottom: 70px;
+            bottom: 60px;
             left: 0;
             right: 0;
             background: var(--bg-card);
             border-top: 1px solid var(--border);
-            padding: 16px;
+            padding: 12px;
             z-index: 90;
             transform: translateY(100%);
             transition: transform 0.4s;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .data-panel.visible {
@@ -731,7 +699,7 @@
 
         .metrics-row {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             justify-content: center;
             max-width: 1200px;
             margin: 0 auto;
@@ -740,51 +708,54 @@
 
         .metric-minimal {
             text-align: center;
-            padding: 12px 16px;
+            padding: 10px 12px;
             border: 1px solid var(--border);
-            min-width: 100px;
+            min-width: 80px;
             flex: 1;
-            max-width: 140px;
+            max-width: 120px;
+            border-radius: 4px;
+            background: var(--bg-elevated);
         }
 
         .metric-minimal-label {
-            font-size: 9px;
+            font-size: 8px;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .metric-minimal-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text);
         }
 
         .metric-minimal-value.accent { color: var(--accent); }
+        .metric-minimal-value.info { color: var(--info); }
         .metric-minimal-value.warning { color: var(--warning); }
-        .metric-minimal-value.error { color: var(--error); }
 
         .metric-minimal-sub {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-muted);
-            margin-top: 4px;
+            margin-top: 2px;
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* Modal - Redesigned */
+        /* Modal */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.9);
             backdrop-filter: blur(10px);
             z-index: 1000;
             display: none;
             opacity: 0;
             transition: opacity 0.3s;
-            padding: 16px;
+            padding: 12px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .modal-backdrop.visible {
@@ -795,7 +766,7 @@
         .modal-container {
             position: relative;
             width: 100%;
-            max-width: 600px;
+            max-width: 500px;
             margin: auto;
             display: flex;
             flex-direction: column;
@@ -803,25 +774,26 @@
 
         .modal-close {
             position: absolute;
-            top: -48px;
+            top: -40px;
             right: 0;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-muted);
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
             z-index: 10;
+            border-radius: 4px;
         }
 
         .modal-close:hover {
-            border-color: var(--error);
-            color: var(--error);
+            border-color: var(--warning);
+            color: var(--warning);
             transform: rotate(90deg);
         }
 
@@ -829,56 +801,60 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             width: 100%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            border-radius: 8px;
         }
 
         .modal-header {
-            padding: 24px;
+            padding: 20px;
             border-bottom: 1px solid var(--border);
             background: var(--bg-elevated);
         }
 
         .modal-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .modal-title::before {
             content: '';
             width: 4px;
-            height: 20px;
+            height: 18px;
             background: var(--accent);
+            border-radius: 2px;
         }
 
         .modal-subtitle {
             color: var(--text-muted);
-            font-size: 13px;
+            font-size: 12px;
             font-family: 'JetBrains Mono', monospace;
         }
 
         .modal-body {
-            padding: 24px;
+            padding: 20px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
         .stat-card {
-            padding: 16px;
+            padding: 14px;
             border: 1px solid var(--border);
             background: var(--bg);
+            border-radius: 6px;
         }
 
         .stat-label {
@@ -891,26 +867,28 @@
 
         .stat-value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
         }
 
         .stat-value.accent { color: var(--accent); }
+        .stat-value.info { color: var(--info); }
         .stat-value.warning { color: var(--warning); }
-        .stat-value.error { color: var(--error); }
 
         .issues-section {
             border: 1px solid var(--border);
-            padding: 16px;
-            margin-bottom: 20px;
+            padding: 14px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+            background: var(--bg);
         }
 
         .issues-title {
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: var(--text-muted);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .issue-item {
@@ -918,7 +896,7 @@
             justify-content: space-between;
             padding: 6px 0;
             border-bottom: 1px solid var(--border);
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .issue-item:last-child {
@@ -926,18 +904,18 @@
         }
 
         .modal-footer {
-            padding: 20px 24px;
+            padding: 16px 20px;
             border-top: 1px solid var(--border);
             background: var(--bg-elevated);
         }
 
         .input-group {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .input-label {
             display: block;
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 2px;
             color: var(--text-muted);
@@ -953,21 +931,22 @@
             font-family: inherit;
             font-size: 14px;
             transition: border-color 0.2s;
+            border-radius: 4px;
         }
 
         .input-field:focus {
             outline: none;
-            border-color: var(--accent);
+            border-color: var(--info);
         }
 
         .button-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .btn {
             flex: 1;
-            padding: 12px 20px;
+            padding: 12px 16px;
             border: 1px solid var(--border);
             background: transparent;
             color: var(--text);
@@ -978,6 +957,7 @@
             letter-spacing: 1px;
             cursor: pointer;
             transition: all 0.2s;
+            border-radius: 4px;
         }
 
         .btn:hover {
@@ -1002,54 +982,61 @@
 
         .status-text {
             text-align: center;
-            margin-top: 10px;
-            font-size: 12px;
+            margin-top: 8px;
+            font-size: 11px;
             color: var(--text-muted);
-            min-height: 18px;
+            min-height: 16px;
         }
 
         .status-text.success { color: var(--accent); }
-        .status-text.error { color: var(--error); }
+        .status-text.error { color: var(--warning); }
 
         /* Toast */
         .toast-container {
             position: fixed;
-            top: 80px;
-            right: 16px;
+            top: 70px;
+            right: 12px;
             z-index: 2000;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            max-width: calc(100% - 32px);
+            gap: 8px;
+            max-width: calc(100% - 24px);
+            pointer-events: none;
         }
 
         .toast {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-left: 3px solid var(--accent);
-            padding: 14px 18px;
-            min-width: 260px;
+            border-left: 3px solid var(--info);
+            padding: 12px 16px;
+            min-width: 240px;
             max-width: 100%;
             transform: translateX(120%);
             transition: transform 0.4s;
+            pointer-events: auto;
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
         .toast.visible {
             transform: translateX(0);
         }
 
+        .toast.success { border-left-color: var(--accent); }
+        .toast.warning { border-left-color: var(--warning); }
+
         .toast-title {
             font-weight: 600;
-            font-size: 13px;
-            margin-bottom: 4px;
+            font-size: 12px;
+            margin-bottom: 2px;
         }
 
         .toast-message {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
         }
 
-        /* Rep History in Deck */
+        /* Rep History */
         .rep-history-compact {
             max-height: 0;
             overflow: hidden;
@@ -1057,9 +1044,10 @@
         }
 
         .control-deck.expanded .rep-history-compact {
-            max-height: 180px;
-            margin-top: 16px;
+            max-height: 160px;
+            margin-top: 12px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .rep-item-compact {
@@ -1067,7 +1055,7 @@
             justify-content: space-between;
             padding: 6px 0;
             border-bottom: 1px solid var(--border);
-            font-size: 11px;
+            font-size: 10px;
             font-family: 'JetBrains Mono', monospace;
         }
 
@@ -1077,8 +1065,8 @@
 
         /* Toggle Icon */
         .toggle-icon {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             position: relative;
         }
 
@@ -1111,158 +1099,150 @@
             opacity: 0;
         }
 
-        /* Hidden by default - data only shows when toggled */
-        .data-only-view .metric-minimal-value {
-            filter: blur(8px);
-            user-select: none;
-        }
-
-        .data-only-view.visible .metric-minimal-value {
-            filter: none;
-            user-select: auto;
-        }
-
         /* Responsive Breakpoints */
         
         /* Tablet */
-        @media (max-width: 1024px) {
-            .deck-content {
-                gap: 16px;
-            }
-            
-            .metric-minimal {
-                min-width: 90px;
-                padding: 10px 12px;
-            }
-            
-            .metric-minimal-value {
-                font-size: 18px;
-            }
-
-            .mirror-toggle {
-                top: 70px;
-                right: 16px;
-                padding: 8px 12px;
-            }
-        }
-
-        /* Mobile Landscape */
-        @media (max-width: 768px) {
+        @media (min-width: 768px) {
             .header {
-                padding: 12px 16px;
+                padding: 16px 24px;
             }
             
             .brand-mark {
-                width: 24px;
-                height: 24px;
+                width: 28px;
+                height: 28px;
             }
             
             .brand-text {
-                font-size: 14px;
+                font-size: 16px;
             }
             
             .main-stage {
-                padding: 60px 12px 160px;
+                padding: 80px 24px 180px;
             }
             
             .video-frame::before,
             .video-frame::after {
-                width: 12px;
-                height: 12px;
+                width: 16px;
+                height: 16px;
             }
             
             .corner {
-                width: 24px;
-                height: 24px;
+                width: 32px;
+                height: 32px;
             }
             
             .calibration-panel {
-                padding: 24px 20px;
+                padding: 32px;
+                max-width: 400px;
             }
             
             .calibration-title {
-                font-size: 16px;
-            }
-            
-            .calibration-timer {
-                font-size: 28px;
-            }
-
-            .mirror-toggle {
-                top: 60px;
-                right: 12px;
-                padding: 6px 10px;
-            }
-
-            .mirror-toggle-text {
-                font-size: 9px;
+                font-size: 18px;
             }
             
             .control-deck {
-                padding: 12px;
-                transform: translateY(calc(100% - 60px));
+                padding: 16px 24px;
+                transform: translateY(calc(100% - 70px));
             }
             
             .deck-content {
-                gap: 12px;
+                gap: 24px;
             }
             
             .leg-btn {
-                padding: 8px 14px;
-                font-size: 10px;
+                padding: 10px 20px;
+                font-size: 11px;
             }
             
             .finish-btn {
-                padding: 10px 24px;
-                font-size: 11px;
+                padding: 12px 32px;
+                font-size: 12px;
             }
             
             .toggle-btn {
-                padding: 8px 12px;
-                font-size: 10px;
+                padding: 10px 16px;
+                font-size: 11px;
             }
             
             .data-panel {
-                bottom: 60px;
-                padding: 12px;
+                bottom: 70px;
+                padding: 16px;
             }
             
             .metrics-row {
-                gap: 8px;
+                gap: 12px;
             }
             
             .metric-minimal {
-                min-width: 80px;
-                padding: 10px 8px;
+                min-width: 100px;
+                padding: 12px 16px;
             }
             
             .metric-minimal-value {
-                font-size: 16px;
-            }
-            
-            .metric-minimal-label {
-                font-size: 8px;
+                font-size: 20px;
             }
             
             .coaching-hud {
-                bottom: 20px;
+                bottom: 30px;
             }
             
             .coaching-text {
-                font-size: 11px;
-                padding: 8px 16px;
-            }
-
-            .wrong-leg-warning {
-                top: 120px;
+                font-size: 13px;
+                padding: 12px 20px;
             }
         }
 
-        /* Mobile Portrait */
-        @media (max-width: 480px) {
+        /* Desktop */
+        @media (min-width: 1024px) {
+            .main-stage {
+                padding: 100px 40px 200px;
+            }
+            
+            .video-frame {
+                max-width: 1200px;
+            }
+            
+            .modal-container {
+                max-width: 600px;
+            }
+        }
+
+        /* Large Screens */
+        @media (min-width: 1440px) {
+            .video-frame {
+                max-width: 1400px;
+            }
+        }
+
+        /* Mobile Landscape */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .header {
+                padding: 8px 16px;
+            }
+            
+            .main-stage {
+                padding: 50px 16px 120px;
+            }
+            
+            .control-deck {
+                transform: translateY(calc(100% - 50px));
+            }
+            
+            .calibration-panel {
+                padding: 20px;
+                max-width: 350px;
+            }
+            
+            .coaching-hud {
+                bottom: 10px;
+            }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 360px) {
             .deck-content {
                 grid-template-columns: 1fr;
-                gap: 12px;
+                gap: 10px;
                 text-align: center;
             }
             
@@ -1278,116 +1258,13 @@
                 order: -1;
             }
             
-            .status-display {
-                font-size: 9px;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .modal-close {
-                top: 16px;
-                right: 16px;
-                background: var(--bg-card);
-            }
-            
-            .modal-header,
-            .modal-body,
-            .modal-footer {
-                padding: 16px;
-            }
-            
-            .stat-value {
-                font-size: 24px;
-            }
-            
-            .button-row {
-                flex-direction: column;
-            }
-
-            .mirror-toggle {
-                position: relative;
-                top: auto;
-                right: auto;
-                margin: 10px auto;
-                display: inline-flex;
-            }
-        }
-
-        /* Small Mobile */
-        @media (max-width: 360px) {
-            .calibration-feedback {
-                flex-direction: column;
-            }
-            
-            .calibration-status {
-                width: 100%;
-            }
-            
             .metric-minimal {
                 min-width: 70px;
                 padding: 8px 6px;
             }
             
             .metric-minimal-value {
-                font-size: 14px;
-            }
-        }
-
-        /* Large Screens */
-        @media (min-width: 1920px) {
-            .main-stage {
-                padding: 100px 40px 220px;
-            }
-            
-            .video-frame {
-                max-width: 1600px;
-            }
-            
-            .calibration-panel {
-                max-width: 500px;
-                padding: 48px;
-            }
-            
-            .calibration-title {
-                font-size: 22px;
-            }
-            
-            .metric-minimal-value {
-                font-size: 28px;
-            }
-        }
-
-        /* Landscape orientation adjustments */
-        @media (max-height: 500px) and (orientation: landscape) {
-            .header {
-                padding: 8px 16px;
-            }
-            
-            .main-stage {
-                padding: 50px 16px 140px;
-            }
-            
-            .control-deck {
-                transform: translateY(calc(100% - 50px));
-            }
-            
-            .calibration-panel {
-                padding: 20px;
-                max-width: 350px;
-            }
-            
-            .calibration-title {
-                margin-bottom: 12px;
-            }
-            
-            .calibration-instruction {
-                margin-bottom: 16px;
-            }
-
-            .mirror-toggle {
-                top: 50px;
+                font-size: 16px;
             }
         }
     </style>
@@ -1405,12 +1282,6 @@
             </div>
         </header>
 
-        <!-- Mirror Mode Toggle -->
-        <div class="mirror-toggle" id="mirror-toggle" onclick="toggleMirrorMode()">
-            <div class="mirror-icon"></div>
-            <span class="mirror-toggle-text">Mirror: OFF</span>
-        </div>
-
         <!-- Main Stage -->
         <main class="main-stage">
             <div class="video-frame" id="video-frame">
@@ -1418,7 +1289,7 @@
                 <div class="corner bl"></div>
                 
                 <video id="input_video"></video>
-                <canvas id="output_canvas" width="1280" height="720"></canvas>
+                <canvas id="output_canvas"></canvas>
 
                 <!-- Coaching HUD -->
                 <div class="coaching-hud" id="coaching-hud">
@@ -1427,13 +1298,13 @@
             </div>
         </main>
 
-        <!-- Calibration Overlay - Camera stays visible behind -->
+        <!-- Calibration Overlay -->
         <div class="calibration-overlay" id="calibration-overlay">
             <div class="calibration-panel">
                 <div class="calibration-title">Calibration</div>
                 <div class="calibration-instruction">
                     Hold your <span class="calibration-leg" id="cal-leg">LEFT</span> leg straight<br>
-                    <small style="color: var(--text-muted); font-size: 12px;">Acceptable range: 0° to 10° flexion</small>
+                    <small style="color: var(--text-muted); font-size: 11px;">Acceptable range: 0° to 10° flexion</small>
                 </div>
                 <div class="calibration-feedback">
                     <div class="calibration-status" id="cal-status">Searching...</div>
@@ -1458,7 +1329,7 @@
             <div class="stability-warning-text">⚠ Camera Unstable</div>
         </div>
 
-        <!-- Data Panel (Slide up) -->
+        <!-- Data Panel -->
         <div class="data-panel" id="data-panel">
             <div class="metrics-row">
                 <div class="metric-minimal">
@@ -1468,22 +1339,22 @@
                 </div>
                 <div class="metric-minimal">
                     <div class="metric-minimal-label">Flexion</div>
-                    <div class="metric-minimal-value" id="metric-angle">0°</div>
+                    <div class="metric-minimal-value info" id="metric-angle">0°</div>
                     <div class="metric-minimal-sub">0° = straight</div>
                 </div>
                 <div class="metric-minimal">
                     <div class="metric-minimal-label">Hip Stability</div>
-                    <div class="metric-minimal-value" id="metric-hip">--</div>
+                    <div class="metric-minimal-value info" id="metric-hip">--</div>
                     <div class="metric-minimal-sub" id="metric-hip-sub">--</div>
                 </div>
                 <div class="metric-minimal">
                     <div class="metric-minimal-label">Smoothness</div>
-                    <div class="metric-minimal-value" id="metric-smooth">--</div>
+                    <div class="metric-minimal-value info" id="metric-smooth">--</div>
                     <div class="metric-minimal-sub" id="metric-smooth-sub">--</div>
                 </div>
                 <div class="metric-minimal">
                     <div class="metric-minimal-label">Quality</div>
-                    <div class="metric-minimal-value" id="metric-quality">--</div>
+                    <div class="metric-minimal-value info" id="metric-quality">--</div>
                     <div class="metric-minimal-sub" id="metric-timer">Ready</div>
                 </div>
             </div>
@@ -1571,8 +1442,8 @@
                 STAND_THRESHOLD: 15, 
                 DEEP_THRESHOLD: 70, 
                 MAX_SAFE: -5,
-                CALIBRATION_MIN: 0,    // 0 degrees (perfectly straight)
-                CALIBRATION_MAX: 10    // 0-10 degrees (easier range)
+                CALIBRATION_MIN: 0,
+                CALIBRATION_MAX: 10
             },
             SPEED: { MIN_TIME: 2.0, MAX_TIME: 6.0, OPTIMAL_MIN: 2.5, OPTIMAL_MAX: 4.0 },
             STABILITY: { 
@@ -1586,18 +1457,18 @@
             TIMEOUT: 8.0,
             SCORING: { ROM_WEIGHT: 0.40, TEMPO_WEIGHT: 0.30, CONTROL_WEIGHT: 0.30 },
             WRONG_LEG_DETECTION: {
-                MOVEMENT_THRESHOLD: 15,     // Degrees of movement to detect activity
-                CONFIRMATION_FRAMES: 8,     // Frames to confirm wrong leg movement
-                COOLDOWN_MS: 3000          // Time between warnings
+                MOVEMENT_THRESHOLD: 15,
+                CONFIRMATION_FRAMES: 8,
+                COOLDOWN_MS: 3000
             }
         };
 
-        // State
+        // State - Always use user's perspective (mirror mode built-in)
         const state = {
             leg: 'left',
-            // MediaPipe indices: 23=LEFT hip, 24=RIGHT hip, 25=LEFT knee, 26=RIGHT knee, 27=LEFT ankle, 28=RIGHT ankle
-            // These are from the camera's perspective (mirrored from user's view)
-            legIndices: { hip: 23, knee: 25, ankle: 27 },
+            // MediaPipe indices: 23=LEFT side of camera (user's RIGHT), 24=RIGHT side of camera (user's LEFT)
+            // We swap them so "left" button tracks user's left leg (camera's right side)
+            legIndices: { hip: 24, knee: 26, ankle: 28 }, // Default to user's left leg
             
             patientId: null,
             phase: 'STANDING',
@@ -1625,29 +1496,23 @@
             repLogs: [],
             issues: { incompleteROM: 0, tooFast: 0, tooSlow: 0, hyperextension: 0, hipStability: 0, jerky: 0, wrongLeg: 0 },
 
-            // Calibration state
             isCalibrating: false,
             calibrationStartTime: 0,
             calibrationStableTime: 0,
             calibrationData: [],
             isCalibrated: false,
 
-            // Stability monitoring
             frameHistory: [],
             lastFrameTime: 0,
             cameraStable: true,
             stabilityWarnings: 0,
 
-            // Wrong leg detection state
             wrongLegDetection: {
                 selectedLegHistory: [],
                 otherLegHistory: [],
                 lastWarningTime: 0,
                 warningShown: false
-            },
-
-            // Mirror mode (flips left/right interpretation)
-            mirrorMode: false
+            }
         };
 
         let currentSessionData = null;
@@ -1655,15 +1520,22 @@
         let pose = null;
         let camera = null;
 
+        // Canvas sizing for responsiveness
+        function resizeCanvas() {
+            const canvas = document.getElementById('output_canvas');
+            const container = document.querySelector('.video-frame');
+            
+            // Set canvas internal resolution
+            canvas.width = 1280;
+            canvas.height = 720;
+            
+            // CSS handles the display size
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+        }
+
         // Init
         function init() {
-            // Check for saved mirror mode preference
-            const savedMirror = localStorage.getItem('helify_mirror');
-            if (savedMirror === 'true') {
-                state.mirrorMode = true;
-                updateMirrorToggleUI();
-            }
-
             const saved = localStorage.getItem('helify_leg');
             if (saved) {
                 setLeg(saved, false);
@@ -1671,50 +1543,28 @@
                 updateStatus('Select leg to start calibration');
             }
             
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(resizeCanvas, 100);
+            });
+            
             setupMediaPipe();
-        }
-
-        function toggleMirrorMode() {
-            state.mirrorMode = !state.mirrorMode;
-            localStorage.setItem('helify_mirror', state.mirrorMode);
-            updateMirrorToggleUI();
-            
-            // Re-apply leg setting with new mirror mode
-            setLeg(state.leg, false);
-            
-            showToast('Mirror Mode', state.mirrorMode ? 'ON - Left/Right swapped' : 'OFF - Standard orientation');
-        }
-
-        function updateMirrorToggleUI() {
-            const toggle = document.getElementById('mirror-toggle');
-            const text = toggle.querySelector('.mirror-toggle-text');
-            
-            if (state.mirrorMode) {
-                toggle.classList.add('active');
-                text.textContent = 'Mirror: ON';
-            } else {
-                toggle.classList.remove('active');
-                text.textContent = 'Mirror: OFF';
-            }
         }
 
         function setLeg(leg, triggerCalibration = true) {
             state.leg = leg;
             localStorage.setItem('helify_leg', leg);
             
-            // MediaPipe uses: 23=LEFT, 24=RIGHT (from camera's perspective)
-            // When mirrorMode is ON, we swap these because the camera view is mirrored
-            const isLeft = leg === 'left';
-            const useLeftIndices = state.mirrorMode ? !isLeft : isLeft;
-            
-            state.legIndices = useLeftIndices ? 
-                { hip: 23, knee: 25, ankle: 27 } : 
-                { hip: 24, knee: 26, ankle: 28 };
+            // User's left leg = camera's right side (indices 24, 26, 28)
+            // User's right leg = camera's left side (indices 23, 25, 27)
+            state.legIndices = leg === 'left' ? 
+                { hip: 24, knee: 26, ankle: 28 } :  // User's left leg
+                { hip: 23, knee: 25, ankle: 27 };   // User's right leg
             
             document.getElementById('btn-left').classList.toggle('active', leg === 'left');
             document.getElementById('btn-right').classList.toggle('active', leg === 'right');
             
-            // Reset calibration when leg changes
             state.isCalibrated = false;
             state.patientId = null;
             document.getElementById('video-frame').classList.remove('has-patient');
@@ -1746,7 +1596,7 @@
             document.getElementById('cal-angle-display').className = 'calibration-angle-display';
             
             updateStatus('Calibrating...');
-            showToast('Calibration Started', `Hold your ${state.leg} leg straight (0-10°)`);
+            showToast('Calibration Started', `Hold your ${state.leg} leg straight (0-10°)`, 'info');
         }
 
         function completeCalibration() {
@@ -1759,14 +1609,14 @@
             document.getElementById('finish-btn').disabled = false;
             
             updateStatus('Tracking active - Exercise started');
-            showToast('Calibration Complete', 'Exercise tracking active');
+            showToast('Calibration Complete', 'Exercise tracking active', 'success');
         }
 
         function cancelCalibration(reason) {
             state.isCalibrating = false;
             document.getElementById('calibration-overlay').classList.remove('active');
             updateStatus('Calibration failed - Select leg again');
-            showToast('Calibration Failed', reason);
+            showToast('Calibration Failed', reason, 'warning');
         }
 
         function resetSession() {
@@ -1853,17 +1703,14 @@
             const ctx = canvas.getContext('2d');
 
             ctx.save();
-            ctx.clearRect(0, 0, 1280, 720);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Apply mirror transform if needed
-            if (state.mirrorMode) {
-                ctx.translate(1280, 0);
-                ctx.scale(-1, 1);
-            }
+            // Mirror the canvas so it matches user's perspective
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
             
-            ctx.drawImage(results.image, 0, 0, 1280, 720);
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-            // Check camera stability
             checkCameraStability(results);
 
             if (results.poseLandmarks) {
@@ -1872,22 +1719,17 @@
                 const knee = results.poseLandmarks[idx.knee];
                 const ankle = results.poseLandmarks[idx.ankle];
 
-                // Check for wrong leg detection during exercise
                 if (state.isCalibrated && !state.isCalibrating) {
                     checkWrongLeg(results.poseLandmarks);
                 }
 
-                // Calibration mode
                 if (state.isCalibrating) {
                     processCalibrationFrame(results.poseLandmarks, hip, knee, ankle);
                     drawCalibrationSkeleton(ctx, results.poseLandmarks, hip, knee, ankle);
-                } 
-                // Exercise mode (only after calibration)
-                else if (state.isCalibrated) {
+                } else if (state.isCalibrated) {
                     drawSkeleton(ctx, results.poseLandmarks);
                     processExerciseFrame(results.poseLandmarks);
                 } else {
-                    // Just draw skeleton without processing
                     drawSkeleton(ctx, results.poseLandmarks);
                 }
             }
@@ -1895,23 +1737,20 @@
             ctx.restore();
         }
 
-        // Wrong Leg Detection - Compares movement between selected leg and other leg
+        // Wrong Leg Detection
         function checkWrongLeg(landmarks) {
             const now = performance.now();
             const det = state.wrongLegDetection;
             
-            // Cooldown check
             if (now - det.lastWarningTime < CONFIG.WRONG_LEG_DETECTION.COOLDOWN_MS) {
                 return;
             }
 
-            // Get selected leg landmarks
             const selIdx = state.legIndices;
             const selHip = landmarks[selIdx.hip];
             const selKnee = landmarks[selIdx.knee];
             const selAnkle = landmarks[selIdx.ankle];
 
-            // Get other leg landmarks (opposite indices)
             const otherIdx = selIdx.hip === 23 ? 
                 { hip: 24, knee: 26, ankle: 28 } : 
                 { hip: 23, knee: 25, ankle: 27 };
@@ -1919,35 +1758,29 @@
             const othKnee = landmarks[otherIdx.knee];
             const othAnkle = landmarks[otherIdx.ankle];
 
-            // Need both legs visible
             if (!selHip || !selKnee || !selAnkle || !othHip || !othKnee || !othAnkle ||
                 selHip.visibility < 0.5 || selKnee.visibility < 0.5 || selAnkle.visibility < 0.5 ||
                 othHip.visibility < 0.5 || othKnee.visibility < 0.5 || othAnkle.visibility < 0.5) {
                 return;
             }
 
-            // Calculate angles for both legs
             const selGeoAngle = calculateAngle(selHip, selKnee, selAnkle);
             const selAnaAngle = 180 - selGeoAngle;
             
             const othGeoAngle = calculateAngle(othHip, othKnee, othAnkle);
             const othAnaAngle = 180 - othGeoAngle;
 
-            // Track history
             det.selectedLegHistory.push({ angle: selAnaAngle, time: now });
             det.otherLegHistory.push({ angle: othAnaAngle, time: now });
 
-            // Keep only recent history (last 500ms)
             det.selectedLegHistory = det.selectedLegHistory.filter(h => now - h.time < 500);
             det.otherLegHistory = det.otherLegHistory.filter(h => now - h.time < 500);
 
-            // Need enough data
             if (det.selectedLegHistory.length < CONFIG.WRONG_LEG_DETECTION.CONFIRMATION_FRAMES ||
                 det.otherLegHistory.length < CONFIG.WRONG_LEG_DETECTION.CONFIRMATION_FRAMES) {
                 return;
             }
 
-            // Calculate movement ranges
             const selMin = Math.min(...det.selectedLegHistory.map(h => h.angle));
             const selMax = Math.max(...det.selectedLegHistory.map(h => h.angle));
             const selRange = selMax - selMin;
@@ -1956,9 +1789,6 @@
             const othMax = Math.max(...det.otherLegHistory.map(h => h.angle));
             const othRange = othMax - othMin;
 
-            // Wrong leg detected if:
-            // 1. Other leg is moving significantly (bending)
-            // 2. Selected leg is relatively straight (not moving much)
             const otherLegMoving = othRange > CONFIG.WRONG_LEG_DETECTION.MOVEMENT_THRESHOLD;
             const selectedLegStatic = selRange < CONFIG.WRONG_LEG_DETECTION.MOVEMENT_THRESHOLD / 2;
 
@@ -1981,7 +1811,7 @@
             warning.classList.add('visible');
             state.wrongLegDetection.warningShown = true;
             
-            showToast('Wrong Leg Detected', `Please use your ${state.leg.toUpperCase()} leg`);
+            showToast('Wrong Leg Detected', `Please use your ${state.leg.toUpperCase()} leg`, 'warning');
         }
 
         function hideWrongLegWarning() {
@@ -2028,7 +1858,7 @@
             warning.classList.add('visible');
             state.stabilityWarnings++;
             
-            showToast('Warning', 'Camera movement detected - Results may be affected');
+            showToast('Warning', 'Camera movement detected', 'warning');
             
             setTimeout(() => {
                 warning.classList.remove('visible');
@@ -2139,7 +1969,9 @@
 
         function drawCalibrationSkeleton(ctx, landmarks, hip, knee, ankle) {
             const isGood = document.getElementById('cal-status').classList.contains('detected');
-            ctx.strokeStyle = isGood ? '#00ff9d' : '#ffaa00';
+            
+            // BLUE for normal detection during calibration
+            ctx.strokeStyle = isGood ? '#00ccff' : '#ffcc00';
             ctx.lineWidth = 6;
             ctx.lineCap = 'round';
 
@@ -2149,13 +1981,15 @@
             ctx.lineTo(ankle.x * 1280, ankle.y * 720);
             ctx.stroke();
 
-            ctx.fillStyle = isGood ? '#00ff9d' : '#ffaa00';
+            // BLUE joints for good, YELLOW for error
+            ctx.fillStyle = isGood ? '#00ccff' : '#ffcc00';
             [hip, knee, ankle].forEach(point => {
                 ctx.beginPath();
                 ctx.arc(point.x * 1280, point.y * 720, 8, 0, Math.PI * 2);
                 ctx.fill();
             });
 
+            // WHITE text for angle
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 24px "JetBrains Mono"';
             const geoAngle = calculateAngle(hip, knee, ankle);
@@ -2189,7 +2023,7 @@
 
             if (anaAngle < CONFIG.ROM.MAX_SAFE) {
                 state.currentRep.hyperextended = true;
-                showCoaching("Don't lock knee", "error");
+                showCoaching("Don't lock knee", "warning");
             }
 
             if (state.phase === 'STANDING' && anaAngle > CONFIG.ROM.STAND_THRESHOLD) {
@@ -2238,7 +2072,7 @@
             state.currentRep.maxFlexion = angle;
             state.currentRep.startHipY = hipY;
             
-            showCoaching("Lower slowly", "neutral");
+            showCoaching("Lower slowly", "info");
         }
 
         function updateRep(anaAngle, geoAngle, hipY) {
@@ -2253,7 +2087,7 @@
 
             if (state.phase === 'DESCENDING' && anaAngle > CONFIG.ROM.DEEP_THRESHOLD) {
                 state.phase = 'ASCENDING';
-                showCoaching("Extend up", "neutral");
+                showCoaching("Extend up", "info");
             }
 
             const elapsed = (performance.now() / 1000) - state.repStartTime;
@@ -2284,7 +2118,7 @@
                 reason: 'Timeout'
             });
 
-            showCoaching("Too slow", "error");
+            showCoaching("Too slow", "warning");
             updateMetrics();
         }
 
@@ -2331,7 +2165,7 @@
             });
 
             updateQualityDisplay(score);
-            showCoaching(isValid ? "Good rep" : getIssueText(issues), isValid ? "success" : "error");
+            showCoaching(isValid ? "Good rep" : getIssueText(issues), isValid ? "success" : "warning");
             updateMetrics();
         }
 
@@ -2363,28 +2197,30 @@
 
         // UI Updates
         function updateHiddenMetrics(angle, smooth) {
-            document.getElementById('metric-angle').textContent = Math.round(angle) + '°';
-            document.getElementById('metric-angle').className = 'metric-minimal-value ' + 
-                (angle < CONFIG.ROM.MAX_SAFE ? 'error' : '');
+            const angleEl = document.getElementById('metric-angle');
+            angleEl.textContent = Math.round(angle) + '°';
+            angleEl.className = 'metric-minimal-value ' + 
+                (angle < CONFIG.ROM.MAX_SAFE ? 'warning' : 'info');
             
-            document.getElementById('metric-smooth').textContent = 
-                smooth > 80 ? 'Good' : smooth > 50 ? 'Fair' : 'Poor';
-            document.getElementById('metric-smooth').className = 'metric-minimal-value ' +
-                (smooth > 80 ? 'accent' : smooth > 50 ? 'warning' : 'error');
+            const smoothEl = document.getElementById('metric-smooth');
+            smoothEl.textContent = smooth > 80 ? 'Good' : smooth > 50 ? 'Fair' : 'Poor';
+            smoothEl.className = 'metric-minimal-value ' +
+                (smooth > 80 ? 'accent' : smooth > 50 ? 'info' : 'warning');
             document.getElementById('metric-smooth-sub').textContent = 'jerk: ' + state.currentRep.maxJerk.toFixed(1);
 
             const hipVar = state.currentRep.hipVariance;
-            document.getElementById('metric-hip').textContent = 
-                hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? 'Stable' : 'Unstable';
-            document.getElementById('metric-hip').className = 'metric-minimal-value ' +
-                (hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? '' : 'warning');
+            const hipEl = document.getElementById('metric-hip');
+            hipEl.textContent = hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? 'Stable' : 'Unstable';
+            hipEl.className = 'metric-minimal-value ' +
+                (hipVar < CONFIG.STABILITY.HIP_THRESHOLD ? 'info' : 'warning');
             document.getElementById('metric-hip-sub').textContent = (hipVar * 100).toFixed(1) + '% var';
         }
 
         function updateQualityDisplay(score) {
-            document.getElementById('metric-quality').textContent = score;
-            document.getElementById('metric-quality').className = 'metric-minimal-value ' +
-                (score > 80 ? 'accent' : score > 60 ? 'warning' : 'error');
+            const el = document.getElementById('metric-quality');
+            el.textContent = score;
+            el.className = 'metric-minimal-value ' +
+                (score > 80 ? 'accent' : score > 60 ? 'info' : 'warning');
         }
 
         function updateMetrics() {
@@ -2397,7 +2233,16 @@
             const txt = document.getElementById('coaching-text');
             
             txt.textContent = text;
-            txt.className = 'coaching-text ' + type;
+            
+            // Type mapping: success=green, info=blue, warning=yellow
+            if (type === 'success') {
+                txt.className = 'coaching-text success';
+            } else if (type === 'warning') {
+                txt.className = 'coaching-text warning';
+            } else {
+                txt.className = 'coaching-text'; // Default blue/info
+            }
+            
             el.classList.add('visible');
             
             setTimeout(() => {
@@ -2414,23 +2259,27 @@
             const container = document.getElementById('rep-history');
             
             if (state.repLogs.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">No reps yet</div>';
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 16px; font-size: 11px;">No reps yet</div>';
                 return;
             }
 
             container.innerHTML = state.repLogs.slice(0, 10).map(r => `
                 <div class="rep-item-compact">
                     <span>#${r.num} ${r.valid ? '✓' : '✗'} ${r.reason}</span>
-                    <span style="color: ${r.score > 80 ? 'var(--accent)' : r.score > 60 ? 'var(--warning)' : 'var(--error)'}">${r.score}</span>
+                    <span style="color: ${r.score > 80 ? 'var(--accent)' : r.score > 60 ? 'var(--info)' : 'var(--warning)'}">${r.score}</span>
                 </div>
             `).join('');
         }
 
-        // Toast
-        function showToast(title, msg) {
+        // Toast with types
+        function showToast(title, msg, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = 'toast';
+            
+            if (type === 'success') toast.classList.add('success');
+            if (type === 'warning') toast.classList.add('warning');
+            
             toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-message">${msg}</div>`;
             
             container.appendChild(toast);
@@ -2443,12 +2292,12 @@
             }, 3000);
         }
 
-        // Drawing
+        // Drawing - BLUE for detection lines
         function drawSkeleton(ctx, landmarks) {
             const idx = state.legIndices;
-            const color = state.phase === 'STANDING' ? '#00ff9d' : '#ffaa00';
-
-            ctx.strokeStyle = color;
+            
+            // BLUE for normal detection of the leg being tracked
+            ctx.strokeStyle = '#00ccff';
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
 
@@ -2458,15 +2307,17 @@
             ctx.lineTo(landmarks[idx.ankle].x * 1280, landmarks[idx.ankle].y * 720);
             ctx.stroke();
 
-            ctx.fillStyle = color;
+            // BLUE joints
+            ctx.fillStyle = '#00ccff';
             [idx.hip, idx.knee, idx.ankle].forEach(i => {
                 ctx.beginPath();
                 ctx.arc(landmarks[i].x * 1280, landmarks[i].y * 720, 6, 0, Math.PI * 2);
                 ctx.fill();
             });
 
+            // BLUE selection indicator circle
             if (landmarks[idx.knee]) {
-                ctx.strokeStyle = '#00ff9d';
+                ctx.strokeStyle = '#00ccff';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.beginPath();
@@ -2479,7 +2330,7 @@
         // Finish & Export
         function finishSession() {
             if (state.validReps === 0) {
-                showToast('Error', 'Complete at least one valid rep');
+                showToast('Error', 'Complete at least one valid rep', 'warning');
                 return;
             }
 
@@ -2532,7 +2383,7 @@
 
             let wrongLegText = '';
             if (data.issues.wrongLeg > 0) {
-                wrongLegText = `<div class="issue-item" style="color: var(--error)">
+                wrongLegText = `<div class="issue-item" style="color: var(--warning)">
                     <span>Wrong Leg Detection</span>
                     <span>${data.issues.wrongLeg} times</span>
                 </div>`;
@@ -2546,15 +2397,15 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Success Rate</div>
-                        <div class="stat-value ${data.successRate > 70 ? 'accent' : 'warning'}">${data.successRate}%</div>
+                        <div class="stat-value ${data.successRate > 70 ? 'accent' : 'info'}">${data.successRate}%</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Avg ROM</div>
-                        <div class="stat-value">${data.avgRom}°</div>
+                        <div class="stat-value info">${data.avgRom}°</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Quality Score</div>
-                        <div class="stat-value ${data.score > 80 ? 'accent' : data.score > 60 ? 'warning' : 'error'}">${data.score}</div>
+                        <div class="stat-value ${data.score > 80 ? 'accent' : data.score > 60 ? 'info' : 'warning'}">${data.score}</div>
                     </div>
                 </div>
                 
@@ -2630,14 +2481,14 @@
 
             if (data.stabilityWarnings > 0) {
                 y += 5;
-                doc.setTextColor(255, 170, 0);
+                doc.setTextColor(255, 204, 0);
                 add('Camera Warnings', `${data.stabilityWarnings}`);
                 doc.setTextColor(80, 80, 80);
             }
 
             if (data.issues.wrongLeg > 0) {
                 y += 5;
-                doc.setTextColor(255, 68, 68);
+                doc.setTextColor(255, 204, 0);
                 add('Wrong Leg Alerts', `${data.issues.wrongLeg}`);
                 doc.setTextColor(80, 80, 80);
             }
