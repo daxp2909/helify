@@ -159,6 +159,7 @@
             padding: 70px 16px 180px;
             min-height: 100vh;
             min-height: 100dvh;
+            overflow: hidden;
         }
 
         .video-frame {
@@ -168,6 +169,7 @@
             aspect-ratio: 16/9;
             background: var(--bg-elevated);
             border: 1px solid var(--border);
+            overflow: hidden;
         }
 
         .video-frame::before,
@@ -178,6 +180,7 @@
             height: 16px;
             border: 2px solid var(--accent);
             opacity: 0.5;
+            z-index: 10;
         }
 
         .video-frame::before {
@@ -201,8 +204,25 @@
         #output_canvas {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
             display: block;
+        }
+
+        /* Video container for proper scaling */
+        .video-container {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .video-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
         }
 
         /* Corner Markers */
@@ -1150,7 +1170,17 @@
             }
 
             .main-stage {
-                padding: 60px 12px 160px;
+                padding: 60px 8px 160px;
+                align-items: flex-start;
+            }
+
+            /* Video frame takes full width on mobile */
+            .video-frame {
+                width: 100%;
+                max-width: none;
+                aspect-ratio: 3/4; /* Portrait-friendly ratio */
+                max-height: calc(100vh - 240px);
+                max-height: calc(100dvh - 240px);
             }
 
             .video-frame::before,
@@ -1333,11 +1363,16 @@
         /* Small Mobile (up to 479px) */
         @media (max-width: 479px) {
             .main-stage {
-                padding: 55px 10px 150px;
+                padding: 55px 6px 150px;
+                align-items: flex-start;
             }
 
             .video-frame {
-                aspect-ratio: 4/3;
+                width: 100%;
+                max-width: none;
+                aspect-ratio: 9/16; /* Full portrait mode for small phones */
+                max-height: calc(100vh - 220px);
+                max-height: calc(100dvh - 220px);
             }
 
             .control-deck {
@@ -1540,6 +1575,14 @@
 
             .main-stage {
                 padding: 50px 12px 100px;
+                align-items: center;
+            }
+
+            /* In landscape, use 16:9 for full width */
+            .video-frame {
+                aspect-ratio: 16/9;
+                max-height: calc(100vh - 160px);
+                max-height: calc(100dvh - 160px);
             }
 
             .control-deck {
@@ -1689,8 +1732,10 @@
                 <div class="corner tr"></div>
                 <div class="corner bl"></div>
                 
-                <video id="input_video"></video>
-                <canvas id="output_canvas" width="1280" height="720"></canvas>
+                <div class="video-container">
+                    <video id="input_video"></video>
+                    <canvas id="output_canvas" width="1280" height="720"></canvas>
+                </div>
 
                 <!-- Coaching HUD -->
                 <div class="coaching-hud" id="coaching-hud">
@@ -1984,7 +2029,16 @@
                 lastWarningTime: 0,
                 warningShown: false
             },
-            lastCalibrationSpeak: 0
+            lastCalibrationSpeak: 0,
+            // Patient tracking to filter out helpers
+            patientTracking: {
+                patientLandmarks: null,      // The landmarks belonging to the patient
+                helperDetected: false,       // Whether a helper is also in frame
+                patientConfidence: 0,        // Confidence score for patient detection
+                framesSincePatient: 0,       // Frames since we last saw the patient
+                patientBoundingBox: null,    // Last known position of patient
+                calibrationPersonId: null    // Person ID identified during calibration
+            }
         };
 
         let currentSessionData = null;
@@ -2043,13 +2097,16 @@
             state.calibrationData = [];
             state.lastCalibrationSpeak = 0;
             
+            // Reset patient tracking for new calibration
+            resetPatientTracking();
+            
             document.getElementById('cal-leg').textContent = state.leg.toUpperCase();
             document.getElementById('calibration-overlay').classList.add('active');
             document.getElementById('cal-status').textContent = 'Searching...';
             document.getElementById('cal-status').className = 'calibration-status';
             document.getElementById('cal-timer').textContent = CONFIG.STABILITY.CALIBRATION_DURATION.toFixed(1);
             document.getElementById('cal-progress').style.width = '0%';
-            document.getElementById('cal-hint').textContent = 'Position your leg in view';
+            document.getElementById('cal-hint').textContent = 'Position patient leg in center of frame';
             document.getElementById('cal-angle-display').textContent = 'Current: --°';
             document.getElementById('cal-angle-display').className = 'calibration-angle-display';
             
@@ -2096,6 +2153,9 @@
                 lastWarningTime: 0,
                 warningShown: false
             };
+            
+            // Reset patient tracking
+            resetPatientTracking();
             
             resetRepData();
             updateMetrics();
@@ -2188,42 +2248,351 @@
             camera.start();
         }
 
+        // ============================================
+        // PATIENT DETECTION - Filter out helpers
+        // ============================================
+
+        /**
+         * Identifies which person in the frame is the patient (the one doing the exercise)
+         * vs a helper/therapist. Returns the landmarks belonging to the patient.
+         * 
+         * Strategy:
+         * 1. During calibration: The person with the clearest, most stable leg visibility
+         * 2. During exercise: Track the person identified during calibration
+         * 3. Use bounding box size (closer to camera = larger = likely the patient)
+         * 4. Use leg visibility scores
+         * 5. Use position consistency (patient should stay in similar position)
+         */
+        function identifyPatient(landmarks) {
+            const pt = state.patientTracking;
+            const idx = state.legIndices;
+            
+            // Get leg landmarks for the selected leg
+            const hip = landmarks[idx.hip];
+            const knee = landmarks[idx.knee];
+            const ankle = landmarks[idx.ankle];
+            const otherHip = landmarks[idx.hip === 23 ? 24 : 23];
+            
+            // Check if we have valid leg landmarks
+            const legVisible = hip && knee && ankle && 
+                              hip.visibility > 0.5 && 
+                              knee.visibility > 0.5 && 
+                              ankle.visibility > 0.5;
+            
+            if (!legVisible) {
+                pt.framesSincePatient++;
+                return null;
+            }
+            
+            // Calculate bounding box of the detected person
+            const boundingBox = calculatePersonBoundingBox(landmarks);
+            const boxArea = boundingBox ? (boundingBox.maxX - boundingBox.minX) * (boundingBox.maxY - boundingBox.minY) : 0;
+            
+            // During calibration, we need to establish who the patient is
+            if (state.isCalibrating && !pt.calibrationPersonId) {
+                // The patient should be the one with:
+                // 1. Good leg visibility
+                // 2. Reasonable size (not too small - helper in background)
+                // 3. Centered position (patient is typically center-frame)
+                
+                const legQuality = (hip.visibility + knee.visibility + ankle.visibility) / 3;
+                const isCentered = hip.x > 0.3 && hip.x < 0.7; // Hip should be in center 40% of frame
+                const isLargeEnough = boxArea > 0.05; // At least 5% of frame
+                
+                if (legQuality > 0.6 && isCentered && isLargeEnough) {
+                    pt.patientLandmarks = landmarks;
+                    pt.patientBoundingBox = boundingBox;
+                    pt.patientConfidence = legQuality;
+                    pt.framesSincePatient = 0;
+                    pt.calibrationPersonId = generatePersonSignature(landmarks);
+                    return landmarks;
+                }
+                
+                pt.framesSincePatient++;
+                return null;
+            }
+            
+            // During exercise, verify this is still the patient
+            if (state.isCalibrated && pt.calibrationPersonId) {
+                const currentSignature = generatePersonSignature(landmarks);
+                const signatureMatch = comparePersonSignatures(pt.calibrationPersonId, currentSignature);
+                
+                // Also check if position is reasonably consistent
+                const positionConsistent = pt.patientBoundingBox ? 
+                    checkPositionConsistency(pt.patientBoundingBox, boundingBox) : true;
+                
+                // Check if this person is the largest in frame (patient should be closest)
+                const isLargest = checkIfLargestPerson(landmarks, boxArea);
+                
+                if (signatureMatch > 0.6 && positionConsistent && isLargest) {
+                    pt.patientLandmarks = landmarks;
+                    pt.patientBoundingBox = boundingBox;
+                    pt.framesSincePatient = 0;
+                    pt.helperDetected = false;
+                    return landmarks;
+                } else if (signatureMatch > 0.4) {
+                    // Partial match - might be patient but with interference
+                    pt.patientLandmarks = landmarks;
+                    pt.framesSincePatient++;
+                    pt.helperDetected = !isLargest;
+                    return landmarks;
+                } else {
+                    // Likely a different person (helper)
+                    pt.framesSincePatient++;
+                    pt.helperDetected = true;
+                    return null;
+                }
+            }
+            
+            // Default: return landmarks if leg is visible
+            pt.patientLandmarks = landmarks;
+            pt.framesSincePatient = 0;
+            return landmarks;
+        }
+
+        /**
+         * Calculate bounding box of a person based on visible landmarks
+         */
+        function calculatePersonBoundingBox(landmarks) {
+            let minX = 1, minY = 1, maxX = 0, maxY = 0;
+            let visibleCount = 0;
+            
+            // Key body landmarks to determine person extent
+            const keyPoints = [0, 11, 12, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+            
+            for (const i of keyPoints) {
+                const lm = landmarks[i];
+                if (lm && lm.visibility > 0.3) {
+                    minX = Math.min(minX, lm.x);
+                    minY = Math.min(minY, lm.y);
+                    maxX = Math.max(maxX, lm.x);
+                    maxY = Math.max(maxY, lm.y);
+                    visibleCount++;
+                }
+            }
+            
+            if (visibleCount < 5) return null;
+            
+            return { minX, minY, maxX, maxY, area: (maxX - minX) * (maxY - minY) };
+        }
+
+        /**
+         * Generate a signature for a person based on their body proportions
+         * This helps identify the same person across frames
+         */
+        function generatePersonSignature(landmarks) {
+            const idx = state.legIndices;
+            const hip = landmarks[idx.hip];
+            const knee = landmarks[idx.knee];
+            const ankle = landmarks[idx.ankle];
+            const otherHip = landmarks[idx.hip === 23 ? 24 : 23];
+            const shoulder = landmarks[idx.hip === 23 ? 12 : 11];
+            
+            if (!hip || !knee || !ankle) return null;
+            
+            // Create signature based on body segment ratios
+            const thighLength = Math.sqrt(Math.pow(knee.x - hip.x, 2) + Math.pow(knee.y - hip.y, 2));
+            const shinLength = Math.sqrt(Math.pow(ankle.x - knee.x, 2) + Math.pow(ankle.y - knee.y, 2));
+            
+            // Hip width (if both hips visible)
+            let hipWidth = 0;
+            if (otherHip && otherHip.visibility > 0.5) {
+                hipWidth = Math.sqrt(Math.pow(otherHip.x - hip.x, 2) + Math.pow(otherHip.y - hip.y, 2));
+            }
+            
+            return {
+                thighLength,
+                shinLength,
+                hipWidth,
+                legRatio: thighLength / (shinLength || 0.001),
+                hipY: hip.y
+            };
+        }
+
+        /**
+         * Compare two person signatures to see if they match
+         * Returns a similarity score (0-1)
+         */
+        function comparePersonSignatures(sig1, sig2) {
+            if (!sig1 || !sig2) return 0;
+            
+            // Compare leg ratios (should be consistent for same person)
+            const ratioDiff = Math.abs(sig1.legRatio - sig2.legRatio) / Math.max(sig1.legRatio, sig2.legRatio);
+            const ratioScore = Math.max(0, 1 - ratioDiff);
+            
+            // Compare hip Y position (patient shouldn't jump around too much)
+            const hipDiff = Math.abs(sig1.hipY - sig2.hipY);
+            const hipScore = hipDiff < 0.15 ? 1 - (hipDiff / 0.15) : 0;
+            
+            // Compare thigh lengths (scale factor)
+            const scaleDiff = Math.abs(sig1.thighLength - sig2.thighLength) / Math.max(sig1.thighLength, sig2.thighLength);
+            const scaleScore = Math.max(0, 1 - scaleDiff * 2); // Scale changes more easily
+            
+            // Weighted average
+            return (ratioScore * 0.4 + hipScore * 0.35 + scaleScore * 0.25);
+        }
+
+        /**
+         * Check if current position is consistent with previous position
+         */
+        function checkPositionConsistency(prevBox, currBox) {
+            if (!prevBox || !currBox) return true;
+            
+            const centerX1 = (prevBox.minX + prevBox.maxX) / 2;
+            const centerY1 = (prevBox.minY + prevBox.maxY) / 2;
+            const centerX2 = (currBox.minX + currBox.maxX) / 2;
+            const centerY2 = (currBox.minY + currBox.maxY) / 2;
+            
+            const distance = Math.sqrt(Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2));
+            
+            // Allow movement up to 20% of frame width
+            return distance < 0.2;
+        }
+
+        /**
+         * Check if this person is the largest in the frame
+         * (patient should be closer to camera than helper)
+         */
+        function checkIfLargestPerson(landmarks, boxArea) {
+            // For now, just check if the person is reasonably large
+            // In a multi-person scenario, we'd need to track all detected people
+            // But MediaPipe Pose typically returns one person's landmarks
+            return boxArea > 0.04; // At least 4% of frame
+        }
+
+        /**
+         * Get patient landmarks, filtering out helpers
+         */
+        function getPatientLandmarks(landmarks) {
+            return identifyPatient(landmarks);
+        }
+
+        /**
+         * Reset patient tracking (call when starting new session)
+         */
+        function resetPatientTracking() {
+            state.patientTracking = {
+                patientLandmarks: null,
+                helperDetected: false,
+                patientConfidence: 0,
+                framesSincePatient: 0,
+                patientBoundingBox: null,
+                calibrationPersonId: null
+            };
+        }
+
         function onResults(results) {
             const canvas = document.getElementById('output_canvas');
             const ctx = canvas.getContext('2d');
+            
+            // Get the video frame dimensions
+            const videoWidth = results.image.width || 1280;
+            const videoHeight = results.image.height || 720;
+            
+            // Set canvas to match video dimensions
+            if (canvas.width !== videoWidth || canvas.height !== videoHeight) {
+                canvas.width = videoWidth;
+                canvas.height = videoHeight;
+            }
 
             ctx.save();
-            ctx.clearRect(0, 0, 1280, 720);
+            ctx.clearRect(0, 0, videoWidth, videoHeight);
             
-            ctx.translate(1280, 0);
+            // Mirror the video horizontally
+            ctx.translate(videoWidth, 0);
             ctx.scale(-1, 1);
             
-            ctx.drawImage(results.image, 0, 0, 1280, 720);
+            ctx.drawImage(results.image, 0, 0, videoWidth, videoHeight);
 
             checkCameraStability(results);
 
             if (results.poseLandmarks) {
-                const idx = state.legIndices;
-                const hip = results.poseLandmarks[idx.hip];
-                const knee = results.poseLandmarks[idx.knee];
-                const ankle = results.poseLandmarks[idx.ankle];
+                // Filter to get only the patient's landmarks
+                const patientLandmarks = getPatientLandmarks(results.poseLandmarks);
+                
+                if (patientLandmarks) {
+                    const idx = state.legIndices;
+                    const hip = patientLandmarks[idx.hip];
+                    const knee = patientLandmarks[idx.knee];
+                    const ankle = patientLandmarks[idx.ankle];
 
-                if (state.isCalibrated && !state.isCalibrating) {
-                    checkWrongLeg(results.poseLandmarks);
-                }
+                    if (state.isCalibrated && !state.isCalibrating) {
+                        checkWrongLeg(patientLandmarks);
+                    }
 
-                if (state.isCalibrating) {
-                    processCalibrationFrame(results.poseLandmarks, hip, knee, ankle);
-                    drawCalibrationSkeleton(ctx, results.poseLandmarks, hip, knee, ankle);
-                } else if (state.isCalibrated) {
-                    drawSkeleton(ctx, results.poseLandmarks);
-                    processExerciseFrame(results.poseLandmarks);
+                    if (state.isCalibrating) {
+                        processCalibrationFrame(patientLandmarks, hip, knee, ankle);
+                        drawCalibrationSkeleton(ctx, patientLandmarks, hip, knee, ankle);
+                    } else if (state.isCalibrated) {
+                        drawSkeleton(ctx, patientLandmarks);
+                        processExerciseFrame(patientLandmarks);
+                    } else {
+                        drawSkeleton(ctx, patientLandmarks);
+                    }
+                    
+                    // Show helper warning if detected
+                    if (state.patientTracking.helperDetected) {
+                        showHelperWarning();
+                    } else {
+                        hideHelperWarning();
+                    }
                 } else {
-                    drawSkeleton(ctx, results.poseLandmarks);
+                    // No patient detected - show searching indicator
+                    showSearchingIndicator(ctx);
+                    hideHelperWarning();
                 }
             }
 
             ctx.restore();
+        }
+        
+        /**
+         * Show warning when helper is detected
+         */
+        function showHelperWarning() {
+            // Use the existing wrong-leg warning element or create a custom one
+            const warning = document.getElementById('wrong-leg-warning');
+            const textEl = warning.querySelector('.wrong-leg-warning-text');
+            const subEl = warning.querySelector('.wrong-leg-warning-sub');
+            
+            // Temporarily change the message
+            if (!warning.classList.contains('visible') || textEl.textContent.includes('Helper')) {
+                textEl.textContent = '⚠ Multiple People Detected';
+                subEl.textContent = 'Please ensure only the patient is visible in frame';
+                warning.classList.add('visible');
+                
+                // Speak warning occasionally
+                if (Math.random() < 0.02) {
+                    speak('Please ask the helper to step aside.', 'normal');
+                }
+            }
+        }
+        
+        function hideHelperWarning() {
+            const warning = document.getElementById('wrong-leg-warning');
+            const textEl = warning.querySelector('.wrong-leg-warning-text');
+            
+            // Only hide if it's the helper warning
+            if (textEl.textContent.includes('Multiple People') || textEl.textContent.includes('Helper')) {
+                warning.classList.remove('visible');
+                // Reset text for next use
+                setTimeout(() => {
+                    textEl.textContent = '⚠ Wrong Leg Detected';
+                }, 300);
+            }
+        }
+        
+        /**
+         * Draw searching indicator when patient not detected
+         */
+        function showSearchingIndicator(ctx) {
+            const canvas = document.getElementById('output_canvas');
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.fillStyle = 'rgba(0, 204, 255, 0.3)';
+            ctx.font = 'bold 20px "JetBrains Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('Searching for patient...', width / 2, height / 2);
         }
 
         // Wrong Leg Detection
@@ -2361,6 +2730,23 @@
             const now = performance.now() / 1000;
             const elapsed = now - state.calibrationStartTime;
             const nowMs = performance.now();
+            const pt = state.patientTracking;
+
+            // Check if patient is properly identified
+            if (!pt.calibrationPersonId) {
+                // Still trying to identify the patient
+                document.getElementById('cal-status').textContent = 'Identifying patient...';
+                document.getElementById('cal-status').className = 'calibration-status';
+                document.getElementById('cal-hint').textContent = 'Ensure patient is centered, helper should step aside';
+                document.getElementById('cal-angle-display').textContent = 'Current: --°';
+                document.getElementById('cal-progress').style.width = '0%';
+                
+                if (nowMs - state.lastCalibrationSpeak > 3000) {
+                    speak('Please ensure only the patient is visible in the frame.', 'normal');
+                    state.lastCalibrationSpeak = nowMs;
+                }
+                return;
+            }
 
             if (!hip || !knee || !ankle || hip.visibility < 0.5 || knee.visibility < 0.5 || ankle.visibility < 0.5) {
                 document.getElementById('cal-status').textContent = 'Leg not visible';
@@ -2374,6 +2760,22 @@
                 
                 if (nowMs - state.lastCalibrationSpeak > 4000) {
                     speak('Leg not visible. Please move back.', 'normal');
+                    state.lastCalibrationSpeak = nowMs;
+                }
+                return;
+            }
+
+            // Check if helper is interfering
+            if (pt.helperDetected) {
+                document.getElementById('cal-status').textContent = 'Multiple people detected';
+                document.getElementById('cal-status').className = 'calibration-status error';
+                document.getElementById('cal-hint').textContent = 'Please ask helper to step aside';
+                state.calibrationStableTime = 0;
+                updateCalibrationTimer(CONFIG.STABILITY.CALIBRATION_DURATION);
+                document.getElementById('cal-progress').style.width = '0%';
+                
+                if (nowMs - state.lastCalibrationSpeak > 4000) {
+                    speak('Multiple people detected. Please ask the helper to step aside.', 'normal');
                     state.lastCalibrationSpeak = nowMs;
                 }
                 return;
@@ -2481,6 +2883,9 @@
         }
 
         function drawCalibrationSkeleton(ctx, landmarks, hip, knee, ankle) {
+            const canvas = document.getElementById('output_canvas');
+            const width = canvas.width;
+            const height = canvas.height;
             const idx = state.legIndices;
             const isGood = document.getElementById('cal-status').classList.contains('detected');
             
@@ -2489,15 +2894,15 @@
             ctx.lineCap = 'round';
 
             ctx.beginPath();
-            ctx.moveTo(hip.x * 1280, hip.y * 720);
-            ctx.lineTo(knee.x * 1280, knee.y * 720);
-            ctx.lineTo(ankle.x * 1280, ankle.y * 720);
+            ctx.moveTo(hip.x * width, hip.y * height);
+            ctx.lineTo(knee.x * width, knee.y * height);
+            ctx.lineTo(ankle.x * width, ankle.y * height);
             ctx.stroke();
 
             ctx.fillStyle = isGood ? '#00ccff' : '#ffcc00';
             [hip, knee, ankle].forEach(point => {
                 ctx.beginPath();
-                ctx.arc(point.x * 1280, point.y * 720, 8, 0, Math.PI * 2);
+                ctx.arc(point.x * width, point.y * height, 8, 0, Math.PI * 2);
                 ctx.fill();
             });
 
@@ -2505,7 +2910,7 @@
             ctx.font = 'bold 24px "JetBrains Mono"';
             const geoAngle = calculateAngle(hip, knee, ankle);
             const anaAngle = 180 - geoAngle;
-            ctx.fillText(Math.round(anaAngle) + '°', knee.x * 1280 + 20, knee.y * 720);
+            ctx.fillText(Math.round(anaAngle) + '°', knee.x * width + 20, knee.y * height);
         }
 
         // Exercise Logic
@@ -2819,6 +3224,9 @@
         }
 
         function drawSkeleton(ctx, landmarks) {
+            const canvas = document.getElementById('output_canvas');
+            const width = canvas.width;
+            const height = canvas.height;
             const idx = state.legIndices;
             
             ctx.strokeStyle = '#00ccff';
@@ -2826,15 +3234,15 @@
             ctx.lineCap = 'round';
 
             ctx.beginPath();
-            ctx.moveTo(landmarks[idx.hip].x * 1280, landmarks[idx.hip].y * 720);
-            ctx.lineTo(landmarks[idx.knee].x * 1280, landmarks[idx.knee].y * 720);
-            ctx.lineTo(landmarks[idx.ankle].x * 1280, landmarks[idx.ankle].y * 720);
+            ctx.moveTo(landmarks[idx.hip].x * width, landmarks[idx.hip].y * height);
+            ctx.lineTo(landmarks[idx.knee].x * width, landmarks[idx.knee].y * height);
+            ctx.lineTo(landmarks[idx.ankle].x * width, landmarks[idx.ankle].y * height);
             ctx.stroke();
 
             ctx.fillStyle = '#00ccff';
             [idx.hip, idx.knee, idx.ankle].forEach(i => {
                 ctx.beginPath();
-                ctx.arc(landmarks[i].x * 1280, landmarks[i].y * 720, 6, 0, Math.PI * 2);
+                ctx.arc(landmarks[i].x * width, landmarks[i].y * height, 6, 0, Math.PI * 2);
                 ctx.fill();
             });
 
@@ -2843,7 +3251,7 @@
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
                 ctx.beginPath();
-                ctx.arc(landmarks[idx.knee].x * 1280, landmarks[idx.knee].y * 720, 40, 0, Math.PI * 2);
+                ctx.arc(landmarks[idx.knee].x * width, landmarks[idx.knee].y * height, 40, 0, Math.PI * 2);
                 ctx.stroke();
                 ctx.setLineDash([]);
             }
